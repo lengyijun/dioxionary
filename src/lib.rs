@@ -1,16 +1,19 @@
+#![feature(let_chains)]
 //! StarDict in Rust!
 //! Use offline or online dictionary to look up words and memorize words in the terminal!
 pub mod cli;
 pub mod dict;
 pub mod history;
+pub mod logseq;
 pub mod stardict;
-use std::fs::DirEntry;
 
+use crate::stardict::SearchAble;
 use anyhow::{anyhow, Context, Result};
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
 use prettytable::{Attr, Cell, Row, Table};
 use rustyline::{error::ReadlineError, Editor};
 use stardict::{EntryWrapper, StarDict};
+use std::fs::DirEntry;
 
 /// Lookup word from the Internel and add the result to history.
 fn lookup_online(word: &str) -> Result<()> {
@@ -118,12 +121,12 @@ pub fn query(
         // only use online dictionary
         lookup_online(word)?;
     } else {
-        let mut dicts = Vec::new();
+        let mut dicts: Vec<Box<dyn SearchAble>> = vec![Box::new(logseq::Logseq {})];
         if let Some(path) = path {
-            dicts.push(StarDict::new(path.into())?);
+            dicts.push(Box::new(StarDict::new(path.into())?));
         } else {
             for d in get_dicts_entries()? {
-                dicts.push(StarDict::new(d.path())?);
+                dicts.push(Box::new(StarDict::new(d.path())?));
             }
         }
 
@@ -131,9 +134,8 @@ pub fn query(
         for d in &dicts {
             match d.exact_lookup(word) {
                 Some(entry) => {
-                    println!("{}\n{}", entry.word, entry.trans);
+                    println!("{}\n", entry.trans);
                     found = true;
-                    break;
                 }
                 _ => eprintln!("Found nothing in {}", d.dict_name()),
             }
@@ -150,7 +152,7 @@ pub fn query(
         if !found && !exact {
             let v = dicts
                 .iter()
-                .map(|dict| {
+                .flat_map(|dict| {
                     dict.fuzzy_lookup(word)
                         .into_iter()
                         .map(|entry| EntryWrapper {
@@ -158,17 +160,22 @@ pub fn query(
                             entry,
                         })
                 })
-                .flatten()
                 .collect::<Vec<_>>();
             if !v.is_empty() {
-                if let Some(selection) = Select::with_theme(&ColorfulTheme::default())
-                    .items(&v)
-                    .default(0)
-                    .interact_on_opt(&Term::stderr())?
-                {
-                    let EntryWrapper { entry, .. } = &v[selection];
-                    println!("{}\n{}", entry.word, entry.trans);
+                let mut last_selection = 0;
+                loop {
+                    if let Some(selection) = Select::with_theme(&ColorfulTheme::default())
+                        .items(&v)
+                        .default(last_selection)
+                        .interact_on_opt(&Term::stderr())?
+                    {
+                        last_selection = selection;
+                        let EntryWrapper { entry, .. } = &v[selection];
+                        println!("{}\n{}\n", entry.word, entry.trans);
+                    }
                 }
+            } else {
+                eprintln!("Nothing similar to mouth bit, sorry :(")
             }
         }
     }

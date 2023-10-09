@@ -2,11 +2,18 @@
 use anyhow::{anyhow, Context, Result};
 use eio::FromBytes;
 use flate2::read::GzDecoder;
+use std::borrow::Cow;
 use std::cmp::min;
 use std::fmt::Debug;
 use std::fs::{read, File};
 use std::io::{prelude::*, BufReader};
 use std::path::PathBuf;
+
+pub trait SearchAble {
+    fn exact_lookup(&self, word: &str) -> Option<Entry>;
+    fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry>;
+    fn dict_name(&self) -> &str;
+}
 
 /// The stardict to be looked up.
 #[allow(unused)]
@@ -18,8 +25,8 @@ pub struct StarDict {
 
 /// A word entry of the stardict.
 pub struct Entry<'a> {
-    pub word: &'a str,
-    pub trans: &'a str,
+    pub word: String,
+    pub trans: Cow<'a, str>,
 }
 
 // only used in fuzzy search selection
@@ -34,9 +41,7 @@ impl std::fmt::Display for EntryWrapper<'_, '_> {
     }
 }
 
-#[allow(unused)]
-impl<'a> StarDict {
-    /// Load stardict from a directory.
+impl StarDict {
     pub fn new(path: PathBuf) -> Result<StarDict> {
         let mut ifo: Option<_> = None;
         let mut idx: Option<_> = None;
@@ -67,13 +72,19 @@ impl<'a> StarDict {
         let dict = Dict::new(dict.unwrap())?;
 
         idx.items
-            .retain(|(word, offset, size)| offset + size < dict.contents.len());
+            .retain(|(_word, offset, size)| offset + size < dict.contents.len());
 
         Ok(StarDict { ifo, idx, dict })
     }
 
-    /// Look up a word with fuzzy searching disabled.
-    pub fn exact_lookup(&self, word: &str) -> Option<Entry> {
+    /// Get the number of the words in the stardict.
+    pub fn wordcount(&self) -> usize {
+        self.ifo.wordcount
+    }
+}
+
+impl SearchAble for StarDict {
+    fn exact_lookup(&self, word: &str) -> Option<Entry> {
         if let Ok(pos) = self.idx.items.binary_search_by(|probe| {
             probe
                 .0
@@ -83,47 +94,24 @@ impl<'a> StarDict {
         }) {
             let (word, offset, size) = &self.idx.items[pos];
             let trans = self.dict.get(*offset, *size);
-            Some(Entry { word, trans })
+            Some(Entry {
+                word: word.to_string(),
+                trans: std::borrow::Cow::Borrowed(trans),
+            })
         } else {
             None
         }
     }
 
-    /// Calculate word distence for fuzzy searching.
-    fn min_edit_distance(pattern: &str, text: &str) -> usize {
-        let pattern_chars: Vec<_> = pattern.chars().collect();
-        let text_chars: Vec<_> = text.chars().collect();
-        let mut dist = vec![vec![0; pattern_chars.len() + 1]; text_chars.len() + 1];
-
-        #[allow(clippy::needless_range_loop)]
-        for i in 0..=text_chars.len() {
-            dist[i][0] = i;
-        }
-
-        for j in 0..=pattern_chars.len() {
-            dist[0][j] = j;
-        }
-
-        for i in 1..=text_chars.len() {
-            for j in 1..=pattern_chars.len() {
-                dist[i][j] = if text_chars[i - 1] == pattern_chars[j - 1] {
-                    dist[i - 1][j - 1]
-                } else {
-                    min(min(dist[i][j - 1], dist[i - 1][j]), dist[i - 1][j - 1]) + 1
-                }
-            }
-        }
-        dist[text_chars.len()][pattern_chars.len()]
-    }
-
-    pub fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry> {
+    fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry> {
         let target_word = target_word.to_lowercase();
-        let mut min_dist = 2;
+        // bury vs buried
+        let mut min_dist = 3;
         let mut res: Vec<&(String, usize, usize)> = Vec::new();
 
         for x in self.idx.items.iter() {
-            let (word, offset, size) = x;
-            let dist = Self::min_edit_distance(&target_word, &word.to_lowercase());
+            let (word, _offset, _size) = x;
+            let dist = min_edit_distance(&target_word, &word.to_lowercase());
             match dist.cmp(&min_dist) {
                 std::cmp::Ordering::Less => {
                     min_dist = dist;
@@ -139,20 +127,14 @@ impl<'a> StarDict {
 
         res.into_iter()
             .map(|(word, offset, size)| Entry {
-                word,
-                trans: self.dict.get(*offset, *size),
+                word: word.to_string(),
+                trans: std::borrow::Cow::Borrowed(self.dict.get(*offset, *size)),
             })
             .collect()
     }
 
-    /// Get the name of the stardict.
-    pub fn dict_name(&'a self) -> &'a str {
+    fn dict_name(&self) -> &str {
         &self.ifo.bookname
-    }
-
-    /// Get the number of the words in the stardict.
-    pub fn wordcount(&self) -> usize {
-        self.ifo.wordcount
     }
 }
 
@@ -394,4 +376,30 @@ mod test {
             fuzzy.iter().find(|w| w.word == cor).unwrap();
         }
     }
+}
+
+fn min_edit_distance(pattern: &str, text: &str) -> usize {
+    let pattern_chars: Vec<_> = pattern.chars().collect();
+    let text_chars: Vec<_> = text.chars().collect();
+    let mut dist = vec![vec![0; pattern_chars.len() + 1]; text_chars.len() + 1];
+
+    #[allow(clippy::needless_range_loop)]
+    for i in 0..=text_chars.len() {
+        dist[i][0] = i;
+    }
+
+    for j in 0..=pattern_chars.len() {
+        dist[0][j] = j;
+    }
+
+    for i in 1..=text_chars.len() {
+        for j in 1..=pattern_chars.len() {
+            dist[i][j] = if text_chars[i - 1] == pattern_chars[j - 1] {
+                dist[i - 1][j - 1]
+            } else {
+                min(min(dist[i][j - 1], dist[i - 1][j]), dist[i - 1][j - 1]) + 1
+            }
+        }
+    }
+    dist[text_chars.len()][pattern_chars.len()]
 }

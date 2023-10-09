@@ -30,7 +30,7 @@ pub struct Cli {
     #[arg(short = 'x', long, default_value_t = false)]
     pub online: bool,
 
-    /// Try offline dictionary first, then the online.
+    /// try offline dictionary first, then the online
     #[arg(short = 'L', long, default_value_t = true)]
     pub local_first: bool,
 
@@ -38,8 +38,12 @@ pub struct Cli {
     #[arg(short, long, default_value_t = false)]
     pub exact_search: bool,
 
-    /// Play word pronunciation.
-    #[arg(short, long, default_value_t = false)]
+    /// for use in scripts
+    #[arg(short, long, default_value_t = true)]
+    pub non_interactive: bool,
+
+    /// Read aloud
+    #[arg(short, long)]
     pub read_aloud: bool,
 
     /// Generate shell completion scripts.
