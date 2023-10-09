@@ -9,8 +9,8 @@ use std::fs::DirEntry;
 use anyhow::{anyhow, Context, Result};
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
 use prettytable::{Attr, Cell, Row, Table};
-use rustyline::error::ReadlineError;
-use stardict::StarDict;
+use rustyline::{error::ReadlineError, Editor};
+use stardict::{EntryWrapper, StarDict};
 
 /// Lookup word from the Internel and add the result to history.
 fn lookup_online(word: &str) -> Result<()> {
@@ -148,22 +148,26 @@ pub fn query(
         }
 
         if !found && !exact {
-            println!("Fuzzy search enabled");
-            if let Some(selection) = Select::with_theme(&ColorfulTheme::default())
-                .items(&dicts.iter().map(|x| x.dict_name()).collect::<Vec<&str>>())
-                .default(0)
-                .interact_on_opt(&Term::stderr())?
-            {
-                if let Some(entries) = dicts[selection].fuzzy_lookup(word) {
-                    if let Some(sub_selection) = Select::with_theme(&ColorfulTheme::default())
-                        .items(&entries.iter().map(|x| x.word).collect::<Vec<&str>>())
-                        .default(0)
-                        .interact_on_opt(&Term::stderr())?
-                    {
-                        let entry = &entries[sub_selection];
-                        corrected_word = Some(entry.word.to_owned());
-                        println!("{}\n{}", entry.word, entry.trans);
-                    }
+            let v = dicts
+                .iter()
+                .map(|dict| {
+                    dict.fuzzy_lookup(word)
+                        .into_iter()
+                        .map(|entry| EntryWrapper {
+                            dict_name: dict.dict_name(),
+                            entry,
+                        })
+                })
+                .flatten()
+                .collect::<Vec<_>>();
+            if !v.is_empty() {
+                if let Some(selection) = Select::with_theme(&ColorfulTheme::default())
+                    .items(&v)
+                    .default(0)
+                    .interact_on_opt(&Term::stderr())?
+                {
+                    let EntryWrapper { entry, .. } = &v[selection];
+                    println!("{}\n{}", entry.word, entry.trans);
                 }
             }
         }

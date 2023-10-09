@@ -22,6 +22,18 @@ pub struct Entry<'a> {
     pub trans: &'a str,
 }
 
+// only used in fuzzy search selection
+pub struct EntryWrapper<'a, 'b> {
+    pub dict_name: &'b str,
+    pub entry: Entry<'a>,
+}
+
+impl std::fmt::Display for EntryWrapper<'_, '_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{} {}", self.entry.word, self.dict_name)
+    }
+}
+
 #[allow(unused)]
 impl<'a> StarDict {
     /// Load stardict from a directory.
@@ -104,30 +116,33 @@ impl<'a> StarDict {
         dist[text_chars.len()][pattern_chars.len()]
     }
 
-    /// Look up a word with fuzzy searching enabled.
-    pub fn fuzzy_lookup(&self, word: &str) -> Option<Vec<Entry>> {
-        let distances: Vec<_> = self
-            .idx
-            .items
-            .iter()
-            .filter(|s| !s.0.is_empty())
-            .map(|s| Self::min_edit_distance(&word.to_lowercase(), &s.0.to_lowercase()))
-            .collect();
-        let min_dist = distances.iter().min()?;
-        let result = self
-            .idx
-            .items
-            .iter()
-            .filter(|s| !s.0.is_empty())
-            .enumerate()
-            .filter(|(idx, _)| distances[*idx] == *min_dist)
-            .map(|(_, x)| {
-                let (word, offset, size) = x;
-                let trans = self.dict.get(*offset, *size);
-                Entry { word, trans }
+    pub fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry> {
+        let target_word = target_word.to_lowercase();
+        let mut min_dist = 2;
+        let mut res: Vec<&(String, usize, usize)> = Vec::new();
+
+        for x in self.idx.items.iter() {
+            let (word, offset, size) = x;
+            let dist = Self::min_edit_distance(&target_word, &word.to_lowercase());
+            match dist.cmp(&min_dist) {
+                std::cmp::Ordering::Less => {
+                    min_dist = dist;
+                    res.clear();
+                    res.push(x);
+                }
+                std::cmp::Ordering::Equal => {
+                    res.push(x);
+                }
+                std::cmp::Ordering::Greater => {}
+            }
+        }
+
+        res.into_iter()
+            .map(|(word, offset, size)| Entry {
+                word,
+                trans: self.dict.get(*offset, *size),
             })
-            .collect::<Vec<_>>();
-        Some(result)
+            .collect()
     }
 
     /// Get the name of the stardict.
