@@ -85,13 +85,12 @@ impl StarDict {
 
 impl SearchAble for StarDict {
     fn exact_lookup(&self, word: &str) -> Option<Entry> {
-        if let Ok(pos) = self.idx.items.binary_search_by(|probe| {
-            probe
-                .0
-                .to_lowercase()
-                .cmp(&word.to_lowercase())
-                .then(probe.0.as_str().cmp(word))
-        }) {
+        let word = word.to_lowercase();
+        if let Ok(pos) = self
+            .idx
+            .items
+            .binary_search_by(|probe| probe.0.to_lowercase().cmp(&word))
+        {
             let (word, offset, size) = &self.idx.items[pos];
             let trans = self.dict.get(*offset, *size);
             Some(Entry {
