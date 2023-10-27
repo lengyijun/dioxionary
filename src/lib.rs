@@ -85,7 +85,7 @@ pub fn query(
     path: &Option<String>,
     read_aloud: bool,
 ) -> Result<()> {
-    let mut word = word.as_str();
+    let mut word = word.as_str().trim();
     let mut corrected_word: Option<String> = None;
     let online = word.chars().next().map_or(online, |c| {
         if c == '@' {
