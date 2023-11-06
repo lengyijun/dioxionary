@@ -137,7 +137,9 @@ pub fn query(
                     println!("{}\n", entry.trans);
                     found = true;
                 }
-                _ => eprintln!("Found nothing in {}", d.dict_name()),
+                _ => {
+                    // eprintln!("Found nothing in {}", d.dict_name())
+                }
             }
         }
 
@@ -145,7 +147,7 @@ pub fn query(
             if lookup_online(word).is_ok() {
                 found = true;
             } else {
-                eprintln!("Found nothing in online dict");
+                // eprintln!("Found nothing in online dict");
             }
         }
 
