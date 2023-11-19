@@ -259,7 +259,7 @@ struct Dict {
 }
 
 #[allow(unused)]
-impl<'a> Dict {
+impl Dict {
     fn new(path: PathBuf) -> Result<Dict> {
         let s =
             read(&path).with_context(|| format!("Failed to open stardict directory {:?}", path))?;
@@ -271,7 +271,7 @@ impl<'a> Dict {
         Ok(Dict { contents })
     }
 
-    fn get(&'a self, offset: usize, size: usize) -> &'a str {
+    fn get(&self, offset: usize, size: usize) -> &str {
         &self.contents[offset..offset + size]
     }
 }
@@ -284,7 +284,7 @@ struct Idx {
 
 #[allow(unused)]
 impl Idx {
-    fn read_bytes<const N: usize, T>(path: PathBuf) -> Result<Vec<(String, usize, usize)>>
+    fn read_bytes<const N: usize, T>(path: PathBuf) -> Result<Self>
     where
         T: FromBytes<N> + TryInto<usize>,
         <T as TryInto<usize>>::Error: Debug,
@@ -294,8 +294,10 @@ impl Idx {
 
         let mut items: Vec<_> = Vec::new();
 
+        let mut buf: Vec<u8> = Vec::new();
+        let mut b = [0; N];
         loop {
-            let mut buf: Vec<u8> = Vec::new();
+            buf.clear();
 
             let read_bytes = f
                 .read_until(0, &mut buf)
@@ -305,23 +307,19 @@ impl Idx {
                 break;
             }
 
-            if let Some(&trailing) = buf.last() {
-                if trailing == b'\0' {
-                    buf.pop();
-                }
+            if buf.last() == Some(&b'\0') {
+                buf.pop();
             }
 
-            let mut word: String = String::from_utf8_lossy(&buf)
+            let word: String = String::from_utf8_lossy(&buf)
                 .chars()
                 .filter(|&c| c != '\u{fffd}')
                 .collect();
 
-            let mut b = [0; N];
             f.read(&mut b)
                 .with_context(|| format!("Failed to parse idx file {:?}", path))?;
             let offset = T::from_be_bytes(b).try_into().unwrap();
 
-            let mut b = [0; N];
             f.read(&mut b)
                 .with_context(|| format!("Failed to parse idx file {:?}", path))?;
             let size = T::from_be_bytes(b).try_into().unwrap();
@@ -330,17 +328,13 @@ impl Idx {
                 items.push((word, offset, size))
             }
         }
-        Ok(items)
+        Ok(Self { items })
     }
 
     fn new(path: PathBuf, version: Version) -> Result<Idx> {
         match version {
-            Version::V242 => Ok(Idx {
-                items: Idx::read_bytes::<4, u32>(path)?,
-            }),
-            Version::V300 => Ok(Idx {
-                items: Idx::read_bytes::<8, u64>(path)?,
-            }),
+            Version::V242 => Ok(Idx::read_bytes::<4, u32>(path)?),
+            Version::V300 => Ok(Idx::read_bytes::<8, u64>(path)?),
             Version::Unknown => Err(anyhow!("Wrong stardict version in idx file {:?}", path)),
         }
     }
