@@ -141,11 +141,7 @@ impl WordItem {
             if trans.is_empty() {
                 Err(anyhow!("Found nothing in online dict"))
             } else {
-                let types = if is_en {
-                    Some(get_exam_type(&html)?)
-                } else {
-                    None
-                };
+                let types = None;
                 let word = word.to_owned();
                 Ok(WordItem {
                     word,

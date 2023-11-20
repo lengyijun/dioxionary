@@ -18,7 +18,7 @@ use std::fs::DirEntry;
 /// Lookup word from the Internel and add the result to history.
 fn lookup_online(word: &str) -> Result<()> {
     let word = dict::WordItem::lookup(word)?;
-    println!("{}", word);
+    println!("{}\n", word);
     if word.is_en {
         history::add_history(&word.word, &word.types).with_context(|| "Cannot look up online")?;
     }
