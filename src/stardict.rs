@@ -1,13 +1,13 @@
 //! Look up words form the offline stardicts.
 use anyhow::{anyhow, Context, Result};
-use eio::FromBytes;
+use eio::{FromBytes, ToBytes};
 use flate2::read::GzDecoder;
 use std::borrow::Cow;
 use std::cmp::min;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::fs::{read, File};
 use std::io::{prelude::*, BufReader};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub trait SearchAble {
     fn exact_lookup(&self, word: &str) -> Option<Entry>;
@@ -154,24 +154,24 @@ impl SearchAble for StarDict {
 
 #[allow(unused)]
 #[derive(Debug)]
-struct Ifo {
-    version: Version,
-    bookname: String,
-    wordcount: usize,
-    synwordcount: usize,
-    idxfilesize: usize,
-    idxoffsetbits: usize,
-    author: String,
-    email: String,
-    website: String,
-    description: String,
-    date: String,
-    sametypesequence: String,
-    dicttype: String,
+pub struct Ifo {
+    pub version: Version,
+    pub bookname: String,
+    pub wordcount: usize,
+    pub synwordcount: usize,
+    pub idxfilesize: usize,
+    pub idxoffsetbits: usize,
+    pub author: String,
+    pub email: String,
+    pub website: String,
+    pub description: String,
+    pub date: String,
+    pub sametypesequence: String,
+    pub dicttype: String,
 }
 
 #[derive(Debug, Clone, Copy)]
-enum Version {
+pub enum Version {
     V242,
     V300,
     Unknown,
@@ -180,11 +180,13 @@ enum Version {
 impl Version {
     const V242_STR: &'static str = "2.4.2";
     const V300_STR: &'static str = "3.0.0";
+}
 
-    fn to_string(&self) -> &'static str {
+impl Display for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Version::V242 => Self::V242_STR,
-            Version::V300 => Self::V300_STR,
+            Version::V242 => write!(f, "{}", Self::V242_STR),
+            Version::V300 => write!(f, "{}", Self::V300_STR),
             Version::Unknown => panic!("Unknown.to_string()"),
         }
     }
@@ -266,11 +268,23 @@ impl Ifo {
     fn version(&self) -> Version {
         self.version
     }
+
+    pub fn dump(&self, path: &Path) -> Result<()> {
+        let mut f =
+            File::create(path).with_context(|| format!("Failed to create idx file {:?}", path))?;
+        f.write_all("StarDict's dict ifo file\n".as_bytes())?;
+        f.write_all(format!("version={}\n", self.version.to_string()).as_bytes())?;
+        f.write_all(format!("wordcount={}\n", self.wordcount).as_bytes())?;
+        f.write_all(format!("idxfilesize={}\n", self.idxfilesize).as_bytes())?;
+        f.write_all(format!("bookname={}\n", self.bookname).as_bytes())?;
+        f.write_all(format!("sametypesequence={}\n", self.sametypesequence).as_bytes())?;
+        Ok(())
+    }
 }
 
 #[allow(unused)]
-struct Dict {
-    contents: String,
+pub struct Dict {
+    pub contents: String,
 }
 
 #[allow(unused)]
@@ -289,11 +303,18 @@ impl Dict {
     fn get(&self, offset: usize, size: usize) -> &str {
         &self.contents[offset..offset + size]
     }
+
+    pub fn dump(&self, path: &Path) -> Result<()> {
+        let mut f =
+            File::create(path).with_context(|| format!("Failed to create idx file {:?}", path))?;
+        f.write_all(self.contents.as_bytes())?;
+        Ok(())
+    }
 }
 
 #[allow(unused)]
 #[derive(Debug)]
-struct Idx {
+pub struct Idx {
     items: Vec<(String, usize, usize)>,
 }
 
@@ -344,6 +365,23 @@ impl Idx {
             }
         }
         Ok(Self { items })
+    }
+
+    pub fn write_bytes<const N: usize, T>(path: PathBuf, v: Vec<(String, T, T)>) -> Result<()>
+    where
+        T: FromBytes<N> + ToBytes<N> + TryInto<usize>,
+        <T as TryInto<usize>>::Error: Debug,
+    {
+        let mut f =
+            File::create(&path).with_context(|| format!("Failed to create idx file {:?}", path))?;
+
+        for (word, offset, size) in v {
+            f.write_all(word.as_bytes())?;
+            f.write_all(&[0])?;
+            f.write_all(&offset.to_be_bytes())?;
+            f.write_all(&size.to_be_bytes())?;
+        }
+        Ok(())
     }
 
     fn new(path: PathBuf, version: Version) -> Result<Idx> {
