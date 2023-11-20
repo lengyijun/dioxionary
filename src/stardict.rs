@@ -68,11 +68,13 @@ impl StarDict {
         }
 
         let ifo = Ifo::new(ifo.unwrap())?;
-        let mut idx = Idx::new(idx.unwrap(), ifo.version())?;
+        let idx = Idx::new(idx.unwrap(), ifo.version())?;
         let dict = Dict::new(dict.unwrap())?;
 
+        /*
         idx.items
-            .retain(|(_word, offset, size)| offset + size < dict.contents.len());
+            .retain(|(_word, offset, size)| offset + size <= dict.contents.len());
+         */
 
         Ok(StarDict { ifo, idx, dict })
     }
