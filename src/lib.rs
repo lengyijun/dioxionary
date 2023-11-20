@@ -56,6 +56,7 @@ fn get_dicts_entries() -> Result<Vec<DirEntry>> {
         .read_dir()
         .with_context(|| format!("Failed to open configuration directory {:?}", path))?
         .filter_map(|x| x.ok())
+        .filter(|x| x.file_type().unwrap().is_dir())
         .collect();
 
     dicts.sort_by_key(|a| a.file_name());
