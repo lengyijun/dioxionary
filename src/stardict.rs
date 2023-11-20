@@ -175,6 +175,19 @@ enum Version {
     Unknown,
 }
 
+impl Version {
+    const V242_STR: &'static str = "2.4.2";
+    const V300_STR: &'static str = "3.0.0";
+
+    fn to_string(&self) -> &'static str {
+        match self {
+            Version::V242 => Self::V242_STR,
+            Version::V300 => Self::V300_STR,
+            Version::Unknown => panic!("Unknown.to_string()"),
+        }
+    }
+}
+
 #[allow(unused)]
 impl Ifo {
     fn new(path: PathBuf) -> Result<Ifo> {
@@ -205,9 +218,9 @@ impl Ifo {
                 let val = String::from(&line[id + 1..]);
                 match key {
                     "version" => {
-                        ifo.version = if val == "2.4.2" {
+                        ifo.version = if val == Version::V242_STR {
                             Version::V242
-                        } else if val == "3.0.0" {
+                        } else if val == Version::V300_STR {
                             Version::V300
                         } else {
                             Version::Unknown
