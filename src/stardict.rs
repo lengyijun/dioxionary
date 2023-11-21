@@ -224,50 +224,50 @@ impl Ifo {
         .lines()
         {
             let line = line?;
-            if let Some(id) = line.find('=') {
-                let key = &line[..id];
-                let val = String::from(&line[id + 1..]);
-                match key {
-                    "version" => {
-                        ifo.version = if val == Version::V242_STR {
-                            Version::V242
-                        } else if val == Version::V300_STR {
-                            Version::V300
-                        } else {
-                            Version::Unknown
-                        }
+            let Some((key, val)) = line.split_once('=') else {
+                continue;
+            };
+
+            match key {
+                "version" => {
+                    ifo.version = if val == Version::V242_STR {
+                        Version::V242
+                    } else if val == Version::V300_STR {
+                        Version::V300
+                    } else {
+                        Version::Unknown
                     }
-                    "bookname" => ifo.bookname = val,
-                    "wordcount" => {
-                        ifo.wordcount = val
-                            .parse()
-                            .with_context(|| format!("Failed to parse info file {:?}", path))?
-                    }
-                    "synwordcount" => {
-                        ifo.synwordcount = val
-                            .parse()
-                            .with_context(|| format!("Failed to parse info file {:?}", path))?
-                    }
-                    "idxfilesize" => {
-                        ifo.idxfilesize = val
-                            .parse()
-                            .with_context(|| format!("Failed to parse info file {:?}", path))?
-                    }
-                    "idxoffsetbits" => {
-                        ifo.idxoffsetbits = val
-                            .parse()
-                            .with_context(|| format!("Failed to parse info file {:?}", path))?
-                    }
-                    "author" => ifo.author = val,
-                    "email" => ifo.email = val,
-                    "website" => ifo.website = val,
-                    "description" => ifo.description = val,
-                    "date" => ifo.date = val,
-                    "sametypesequence" => ifo.sametypesequence = val,
-                    "dicttype" => ifo.dicttype = val,
-                    _ => (),
-                };
-            }
+                }
+                "bookname" => ifo.bookname = val.to_owned(),
+                "wordcount" => {
+                    ifo.wordcount = val
+                        .parse()
+                        .with_context(|| format!("Failed to parse info file {:?}", path))?
+                }
+                "synwordcount" => {
+                    ifo.synwordcount = val
+                        .parse()
+                        .with_context(|| format!("Failed to parse info file {:?}", path))?
+                }
+                "idxfilesize" => {
+                    ifo.idxfilesize = val
+                        .parse()
+                        .with_context(|| format!("Failed to parse info file {:?}", path))?
+                }
+                "idxoffsetbits" => {
+                    ifo.idxoffsetbits = val
+                        .parse()
+                        .with_context(|| format!("Failed to parse info file {:?}", path))?
+                }
+                "author" => ifo.author = val.to_owned(),
+                "email" => ifo.email = val.to_owned(),
+                "website" => ifo.website = val.to_owned(),
+                "description" => ifo.description = val.to_owned(),
+                "date" => ifo.date = val.to_owned(),
+                "sametypesequence" => ifo.sametypesequence = val.to_owned(),
+                "dicttype" => ifo.dicttype = val.to_owned(),
+                _ => (),
+            };
         }
         Ok(ifo)
     }
