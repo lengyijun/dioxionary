@@ -43,9 +43,13 @@ impl std::fmt::Display for EntryWrapper<'_, '_> {
 
 impl StarDict {
     pub fn new(path: PathBuf) -> Result<StarDict> {
-        let mut ifo: Option<_> = None;
-        let mut idx: Option<_> = None;
-        let mut dict: Option<_> = None;
+        enum DictType {
+            Dz(PathBuf),
+            Dict(PathBuf),
+        }
+        let mut ifo: Option<PathBuf> = None;
+        let mut idx: Option<PathBuf> = None;
+        let mut dict: Option<DictType> = None;
 
         for path in path
             .read_dir()
@@ -57,7 +61,15 @@ impl StarDict {
                 match extension.to_str().unwrap() {
                     "ifo" => ifo = Some(path),
                     "idx" => idx = Some(path),
-                    "dz" => dict = Some(path),
+                    "dz" => dict = Some(DictType::Dz(path)),
+                    "dict" => {
+                        // prefer dz
+                        match dict {
+                            Some(DictType::Dict(_)) => {}
+                            Some(DictType::Dz(_)) => {}
+                            None => dict = Some(DictType::Dict(path)),
+                        }
+                    }
                     _ => (),
                 }
             }
@@ -69,7 +81,10 @@ impl StarDict {
 
         let ifo = Ifo::new(ifo.unwrap())?;
         let idx = Idx::new(idx.unwrap(), ifo.version())?;
-        let dict = Dict::from_dz(dict.unwrap())?;
+        let dict = match dict.unwrap() {
+            DictType::Dz(dict) => Dict::from_dz(dict)?,
+            DictType::Dict(dict) => Dict::from_dict(dict)?,
+        };
 
         /*
         idx.items
@@ -297,6 +312,16 @@ impl Dict {
         d.read_to_string(&mut contents).with_context(|| {
             format!("Failed to open stardict directory {:?} as dz format", path)
         })?;
+        Ok(Dict { contents })
+    }
+
+    fn from_dict(path: PathBuf) -> Result<Dict> {
+        let s =
+            read(&path).with_context(|| format!("Failed to open stardict directory {:?}", path))?;
+        let mut d = GzDecoder::new(s.as_slice());
+        let mut f = File::open(path)?;
+        let mut contents = String::new();
+        f.read_to_string(&mut contents)?;
         Ok(Dict { contents })
     }
 
