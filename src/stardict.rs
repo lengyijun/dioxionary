@@ -17,7 +17,7 @@ pub trait SearchAble {
 }
 
 /// The stardict to be looked up.
-#[allow(unused)]
+
 pub struct StarDict {
     ifo: Ifo,
     idx: Idx,
@@ -161,7 +161,6 @@ impl SearchAble for StarDict {
 /// sametypesequence= // very important.
 /// dicttype=
 
-#[allow(unused)]
 #[derive(Debug)]
 pub struct Ifo {
     pub version: Version,
@@ -201,7 +200,6 @@ impl Display for Version {
     }
 }
 
-#[allow(unused)]
 impl Ifo {
     fn new(path: PathBuf) -> Result<Ifo> {
         let mut ifo = Ifo {
@@ -334,13 +332,11 @@ impl Dict {
     }
 }
 
-#[allow(unused)]
 #[derive(Debug)]
 pub struct Idx {
     items: Vec<(String, usize, usize)>,
 }
 
-#[allow(unused)]
 impl Idx {
     fn read_bytes<const N: usize, T>(path: PathBuf) -> Result<Self>
     where
