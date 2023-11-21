@@ -69,7 +69,7 @@ impl StarDict {
 
         let ifo = Ifo::new(ifo.unwrap())?;
         let idx = Idx::new(idx.unwrap(), ifo.version())?;
-        let dict = Dict::new(dict.unwrap())?;
+        let dict = Dict::from_dz(dict.unwrap())?;
 
         /*
         idx.items
@@ -289,7 +289,7 @@ pub struct Dict {
 
 #[allow(unused)]
 impl Dict {
-    fn new(path: PathBuf) -> Result<Dict> {
+    fn from_dz(path: PathBuf) -> Result<Dict> {
         let s =
             read(&path).with_context(|| format!("Failed to open stardict directory {:?}", path))?;
         let mut d = GzDecoder::new(s.as_slice());
