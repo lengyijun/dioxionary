@@ -3,9 +3,10 @@ use anyhow::{anyhow, Context, Result};
 use eio::{FromBytes, ToBytes};
 use flate2::read::GzDecoder;
 use std::borrow::Cow;
+use std::cell::OnceCell;
 use std::cmp::min;
 use std::fmt::{Debug, Display};
-use std::fs::{read, File};
+use std::fs::{self, read, File};
 use std::io::{prelude::*, BufReader};
 use std::path::{Path, PathBuf};
 
@@ -43,10 +44,6 @@ impl std::fmt::Display for EntryWrapper<'_, '_> {
 
 impl StarDict {
     pub fn new(path: PathBuf) -> Result<StarDict> {
-        enum DictType {
-            Dz(PathBuf),
-            Dict(PathBuf),
-        }
         let mut ifo: Option<PathBuf> = None;
         let mut idx: Option<PathBuf> = None;
         let mut dict: Option<DictType> = None;
@@ -81,10 +78,7 @@ impl StarDict {
 
         let ifo = Ifo::new(ifo.unwrap())?;
         let idx = Idx::new(idx.unwrap(), ifo.version())?;
-        let dict = match dict.unwrap() {
-            DictType::Dz(dict) => Dict::from_dz(dict)?,
-            DictType::Dict(dict) => Dict::from_dict(dict)?,
-        };
+        let dict = Dict::new(dict.unwrap());
 
         /*
         idx.items
@@ -297,14 +291,13 @@ impl Ifo {
     }
 }
 
-#[allow(unused)]
-pub struct Dict {
-    pub contents: String,
+enum DictType {
+    Dz(PathBuf),
+    Dict(PathBuf),
 }
 
-#[allow(unused)]
-impl Dict {
-    fn from_dz(path: PathBuf) -> Result<Dict> {
+impl DictType {
+    fn load_dz(path: &Path) -> Result<String> {
         let s =
             read(&path).with_context(|| format!("Failed to open stardict directory {:?}", path))?;
         let mut d = GzDecoder::new(s.as_slice());
@@ -312,28 +305,32 @@ impl Dict {
         d.read_to_string(&mut contents).with_context(|| {
             format!("Failed to open stardict directory {:?} as dz format", path)
         })?;
-        Ok(Dict { contents })
+        Ok(contents)
     }
 
-    fn from_dict(path: PathBuf) -> Result<Dict> {
-        let s =
-            read(&path).with_context(|| format!("Failed to open stardict directory {:?}", path))?;
-        let mut d = GzDecoder::new(s.as_slice());
-        let mut f = File::open(path)?;
-        let mut contents = String::new();
-        f.read_to_string(&mut contents)?;
-        Ok(Dict { contents })
+    fn load(&self) -> String {
+        match self {
+            DictType::Dz(pathbuf) => Self::load_dz(pathbuf).unwrap(),
+            DictType::Dict(pathbuf) => fs::read_to_string(pathbuf).unwrap(),
+        }
+    }
+}
+
+pub struct Dict {
+    contents: OnceCell<String>,
+    dict_type: DictType,
+}
+
+impl Dict {
+    fn new(dict_type: DictType) -> Self {
+        Self {
+            dict_type,
+            contents: OnceCell::new(),
+        }
     }
 
     fn get(&self, offset: usize, size: usize) -> &str {
-        &self.contents[offset..offset + size]
-    }
-
-    pub fn dump(&self, path: &Path) -> Result<()> {
-        let mut f =
-            File::create(path).with_context(|| format!("Failed to create idx file {:?}", path))?;
-        f.write_all(self.contents.as_bytes())?;
-        Ok(())
+        &self.contents.get_or_init(|| self.dict_type.load())[offset..offset + size]
     }
 }
 

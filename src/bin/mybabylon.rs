@@ -1,10 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::env::args;
 use std::fs::File;
+use std::io::Write;
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
 
-use dioxionary::stardict::{Dict, Idx, Ifo};
+use anyhow::Context;
+use dioxionary::stardict::{Idx, Ifo};
 
 fn main() {
     let file_name = args().nth(1).expect("file_name expected");
@@ -81,9 +83,11 @@ fn main() {
         .collect();
     Idx::write_bytes(file_path.with_extension("idx"), items).expect("can't write idx");
 
-    let dict: Dict = Dict { contents: content };
-    dict.dump(&file_path.with_extension("dict"))
-        .expect("can't write dict");
+    let dict_file_path = file_path.with_extension("dict");
+    let mut f = File::create(&dict_file_path)
+        .with_context(|| format!("Failed to create dict file {:?}", dict_file_path))
+        .unwrap();
+    f.write_all(content.as_bytes()).unwrap();
 }
 
 // The output is wrapped in a Result to allow matching on errors
