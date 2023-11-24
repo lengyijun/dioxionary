@@ -58,15 +58,12 @@ impl StarDict {
                 match extension.to_str().unwrap() {
                     "ifo" => ifo = Some(path),
                     "idx" => idx = Some(path),
-                    "dz" => dict = Some(DictType::Dz(path)),
-                    "dict" => {
-                        // prefer dz
-                        match dict {
-                            Some(DictType::Dict(_)) => {}
-                            Some(DictType::Dz(_)) => {}
-                            None => dict = Some(DictType::Dict(path)),
-                        }
-                    }
+                    "dz" => match dict {
+                        Some(DictType::Dict(_)) => {}
+                        Some(DictType::Dz(_)) => {}
+                        None => dict = Some(DictType::Dz(path)),
+                    },
+                    "dict" => dict = Some(DictType::Dict(path)),
                     _ => (),
                 }
             }
