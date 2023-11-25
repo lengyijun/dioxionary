@@ -46,7 +46,21 @@ fn main() {
                     break;
                 }
                 content.push('\n');
-                content += &line.replace("\\n", "\n");
+                let line = line.replace("\\n", "\n");
+                if let Some(x) = line.find('\u{0009}') {
+                    let key_word = &line[0..x];
+                    let c = &line[x + 1..];
+                    if let Some(_) = btree_map.insert(
+                        (key_word.to_lowercase(), key_word.to_owned()),
+                        (
+                            (content.len() + x + 1).try_into().unwrap(),
+                            c.len().try_into().unwrap(),
+                        ),
+                    ) {
+                        eprintln!("duplicate {key_word}");
+                    };
+                }
+                content += &line;
             }
             let size = content.len() - offset;
             if size == 0 {
