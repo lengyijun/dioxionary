@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env::args;
 use std::fs::File;
 use std::io::Write;
@@ -23,23 +23,53 @@ fn main() {
         if line.is_empty() {
             continue;
         }
-        let Some((key_word, c)) = line.split_once('\u{0009}') else {
-            continue;
-        };
-        let c = c.replace("\\n", "\n");
-        let size: u32 = c.len().try_into().unwrap();
-        if size == 0 {
-            eprintln!("no content found for {line}");
-            continue;
-        }
-        let offset: u32 = content.len().try_into().unwrap();
-        content += &c;
+        if let Some((key_word, c)) = line.split_once('\u{0009}') {
+            let c = c.replace("\\n", "\n");
+            let size: u32 = c.len().try_into().unwrap();
+            if size == 0 {
+                eprintln!("no content found for {line}");
+                continue;
+            }
+            let offset: u32 = content.len().try_into().unwrap();
+            content += &c;
 
-        if let Some(_) = btree_map.insert(
-            (key_word.to_lowercase(), key_word.to_owned()),
-            (offset, size),
-        ) {
-            eprintln!("duplicate {key_word}");
+            if let Some(_) = btree_map.insert(
+                (key_word.to_lowercase(), key_word.to_owned()),
+                (offset, size),
+            ) {
+                eprintln!("duplicate {key_word}");
+            };
+        } else {
+            let offset = content.len();
+            while let Some(Ok(line)) = lines.next() {
+                if line.trim().is_empty() {
+                    break;
+                }
+                content.push('\n');
+                content += &line.replace("\\n", "\n");
+            }
+            let size = content.len() - offset;
+            if size == 0 {
+                eprintln!("no content found for {line}");
+                continue;
+            }
+
+            let offset: u32 = offset.try_into().unwrap();
+            let size: u32 = size.try_into().unwrap();
+
+            for key_word in line
+                .split('|')
+                .map(|word| word.trim())
+                .filter(|word| !word.is_empty())
+                .collect::<BTreeSet<_>>()
+            {
+                if let Some(_) = btree_map.insert(
+                    (key_word.to_lowercase(), key_word.to_owned()),
+                    (offset, size),
+                ) {
+                    eprintln!("duplicate {key_word}");
+                };
+            }
         };
     }
 
