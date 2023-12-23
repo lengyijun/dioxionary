@@ -1,0 +1,150 @@
+use anyhow::{Context, Result};
+use chrono::{prelude::*, Duration};
+use dirs::cache_dir;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::{
+    collections::HashMap,
+    fs,
+    io::{Read, Write},
+    path::PathBuf,
+};
+
+#[derive(Serialize, Deserialize)]
+pub struct Sm {
+    /// the number of times the card has been successfully recalled in a row since the last time it was not.
+    n: u32,
+    /// how "easy" the card is (more precisely, it determines how quickly the inter-repetition interval grows)
+    ef: f32,
+    ///  is the length of time (in days) SuperMemo will wait after the previous review before asking the user to review the card again.
+    interval: u32,
+
+    last_reviewed: DateTime<Local>,
+}
+
+impl Default for Sm {
+    // for init (new word)
+    fn default() -> Self {
+        Self {
+            n: 0,
+            ef: 2.5,
+            interval: 1,
+            last_reviewed: Local::now(),
+        }
+    }
+}
+
+impl Sm {
+    fn next_review_time(&self) -> DateTime<Local> {
+        self.last_reviewed + Duration::days(self.interval.into())
+    }
+
+    // requires{0 <= user_grade <= 5}
+    fn sm2(&self, user_grade: u8) -> Self {
+        let n: u32;
+        let I: u32;
+
+        if user_grade >= 3 {
+            if self.n == 0 {
+                I = 1;
+            } else if self.n == 1 {
+                I = 6;
+            } else {
+                I = (self.interval as f32 * self.ef).round() as u32;
+            }
+            n = self.n + 1;
+        } else {
+            I = 1;
+            n = 0;
+        }
+
+        let mut ef =
+            self.ef + (0.1 - (5 - user_grade) as f32 * (0.08 + ((5 - user_grade) as f32) * 0.02));
+        if ef < 1.3 {
+            ef = 1.3;
+        }
+        Self {
+            n,
+            ef,
+            interval: I,
+            last_reviewed: Local::now(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct Deck(pub HashMap<String, Sm>);
+
+impl Deck {
+    pub fn search_reviewable(&self) -> Option<String> {
+        for (k, v) in &self.0 {
+            if v.next_review_time() <= Local::now() {
+                return Some(k.to_owned());
+            }
+        }
+        None
+    }
+
+    // requires{0 <= q <= 5}
+    pub fn update(&mut self, question: String, q: u8) {
+        let sm = self.0[&question].sm2(q);
+        self.0.insert(question, sm);
+        let _ = self.dump();
+    }
+
+    fn load_inner() -> Result<Self> {
+        match get_json_location() {
+            Ok(path) => {
+                let mut file = std::fs::File::open(path)?;
+                let mut contents = String::new();
+                file.read_to_string(&mut contents)?;
+                let hm: HashMap<String, Sm> = serde_json::from_str(&contents)?;
+                Ok(Self(hm))
+            }
+            Err(_) => Ok(Self::default()),
+        }
+    }
+
+    pub fn load() -> Self {
+        match Self::load_inner() {
+            Ok(s) => s,
+            Err(_) => Self::default(),
+        }
+    }
+
+    pub fn dump(&self) -> Result<()> {
+        let json_string = serde_json::to_string(&self.0)?;
+        let path = get_json_location()?;
+        let mut file = fs::OpenOptions::new().write(true).create(true).open(path)?;
+        file.write_all(json_string.as_bytes())?;
+        Ok(())
+    }
+
+    pub fn fake_data() -> Self {
+        Self(
+            [(
+                "hello".to_owned(),
+                Sm {
+                    n: 1,
+                    ef: 2.5,
+                    interval: 1,
+                    last_reviewed: "2014-11-28T12:00:09Z".parse::<DateTime<Local>>().unwrap(),
+                },
+            )]
+            .into_iter()
+            .collect(),
+        )
+    }
+}
+
+/// Check and generate cache directory path.
+fn get_json_location() -> Result<PathBuf> {
+    let mut path = cache_dir().with_context(|| "Couldn't find cache directory")?;
+    path.push("dioxionary");
+    if !path.exists() {
+        std::fs::create_dir(&path)
+            .with_context(|| format!("Failed to create directory {:?}", path))?;
+    }
+    path.push("history.json");
+    Ok(path)
+}

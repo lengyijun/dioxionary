@@ -5,7 +5,10 @@ pub mod cli;
 pub mod dict;
 pub mod history;
 pub mod logseq;
+pub mod review;
 pub mod stardict;
+pub mod supermemo;
+pub mod theme;
 
 use crate::stardict::SearchAble;
 use anyhow::{anyhow, Context, Result};
@@ -14,16 +17,6 @@ use prettytable::{Attr, Cell, Row, Table};
 use rustyline::{error::ReadlineError, Editor};
 use stardict::{EntryWrapper, StarDict};
 use std::fs::DirEntry;
-
-/// Lookup word from the Internel and add the result to history.
-fn lookup_online(word: &str) -> Result<()> {
-    let word = dict::WordItem::lookup(word)?;
-    println!("{}\n", word);
-    if word.is_en {
-        history::add_history(&word.word, &word.types).with_context(|| "Cannot look up online")?;
-    }
-    Ok(())
-}
 
 /// Get the entries of the stardicts.
 fn get_dicts_entries() -> Result<Vec<DirEntry>> {
@@ -87,7 +80,6 @@ pub fn query(
     read_aloud: bool,
 ) -> Result<()> {
     let mut word = word.as_str().trim();
-    let corrected_word: Option<String> = None;
     let online = word.chars().next().map_or(online, |c| {
         if c == '@' {
             word = &word[1..];
@@ -120,7 +112,8 @@ pub fn query(
 
     if online {
         // only use online dictionary
-        lookup_online(word)?;
+        let word_item = dict::WordItem::lookup_online(word)?;
+        println!("{}\n", word_item);
     } else {
         let mut dicts: Vec<Box<dyn SearchAble>> = vec![Box::new(logseq::Logseq {})];
         if let Some(path) = path {
@@ -145,10 +138,8 @@ pub fn query(
         }
 
         if !found && local_first {
-            if lookup_online(word).is_ok() {
-                found = true;
-            } else {
-                // eprintln!("Found nothing in online dict");
+            if let Ok(word_item) = dict::WordItem::lookup_online(word) {
+                println!("{}\n", word_item);
             }
         }
 
@@ -183,10 +174,11 @@ pub fn query(
         }
     }
 
+    if is_basic_english(word) {
+        history::add_history(word.to_owned()).with_context(|| "Cannot add to history")?;
+    }
+
     if read_aloud {
-        if let Some(corrected_word) = &corrected_word {
-            word = corrected_word;
-        }
         dict::read_aloud(word)?;
     }
 
@@ -236,4 +228,8 @@ pub fn list_dicts() -> Result<()> {
     });
     table.printstd();
     Ok(())
+}
+
+fn is_basic_english(text: &str) -> bool {
+    text.chars().all(|c| c.is_ascii_alphanumeric())
 }

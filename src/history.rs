@@ -7,6 +7,8 @@ use rusqlite::Connection;
 use std::fs::create_dir;
 use std::path::PathBuf;
 
+use crate::supermemo::{Deck, Sm};
+
 /// Allowed diffculty level types of a word.
 pub static ALLOWED_TYPES: [&str; 7] = ["CET4", "CET6", "TOEFL", "IELTS", "GMAT", "GRE", "SAT"];
 
@@ -22,42 +24,15 @@ fn check_cache() -> Result<PathBuf> {
 }
 
 /// Add a looked up word to history.
-pub fn add_history(word: &str, types: &Option<Vec<String>>) -> Result<()> {
-    let date = Utc::now().timestamp();
-
-    let path = check_cache()?;
-
-    let conn = Connection::open(path)?;
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS HISTORY (
-        WORD TEXT PRIMARY KEY,
-        DATE INTEGER NOT NULL,
-        CET4 INTEGER,
-        CET6 INTEGER,
-        TOEFL INTEGER,
-        IELTS INTEGER,
-        GMAT INTEGER,
-        GRE INTEGER,
-        SAT INTEGER
-        )",
-        (), // empty list of parameters.
-    )?;
-
-    conn.execute(
-        "INSERT OR IGNORE INTO HISTORY (word, date) VALUES (?1, ?2)",
-        (word, date),
-    )?;
-
-    if let Some(types) = types {
-        types.iter().for_each(|x| {
-            if ALLOWED_TYPES.contains(&x.as_str()) {
-                let sql = format!("UPDATE HISTORY SET {} = 1 WHERE WORD = '{}'", x, word);
-                conn.execute(sql.as_str(), ()).unwrap();
-            }
-        })
+pub fn add_history(word: String) -> Result<()> {
+    let mut deck = Deck::load();
+    match deck.0.entry(word) {
+        std::collections::hash_map::Entry::Occupied(_) => {}
+        std::collections::hash_map::Entry::Vacant(v) => {
+            v.insert(Sm::default());
+        }
     }
-
-    Ok(())
+    deck.dump()
 }
 
 /// List sorted or not history of a word type or all types.

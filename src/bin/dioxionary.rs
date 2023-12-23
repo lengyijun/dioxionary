@@ -46,6 +46,7 @@ fn main() -> Result<()> {
                 }
             }
             Action::Dicts => list_dicts(),
+            Action::Review => dioxionary::review::main(),
         }
     } else {
         let online = cli.online;

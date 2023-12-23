@@ -126,7 +126,7 @@ pub struct WordItem {
 
 impl WordItem {
     /// Build a word item by looking up from the web dictionary.
-    pub fn lookup(word: &str) -> Result<WordItem> {
+    pub fn lookup_online(word: &str) -> Result<WordItem> {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -188,11 +188,11 @@ mod test {
 
     #[test]
     fn lookup_online_by_english() {
-        WordItem::lookup("rust").unwrap();
+        WordItem::lookup_online("rust").unwrap();
     }
 
     #[test]
     fn lookup_online_by_chinese() {
-        WordItem::lookup("铁锈").unwrap();
+        WordItem::lookup_online("铁锈").unwrap();
     }
 }

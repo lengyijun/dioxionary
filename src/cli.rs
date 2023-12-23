@@ -68,6 +68,9 @@ pub enum Action {
 
     /// Display list of available dictionaries and exit.
     Dicts,
+
+    /// Review by SM2 algorithm
+    Review,
 }
 
 /// Subcommand line parameters for looking up words.
