@@ -4,7 +4,8 @@ use anyhow::Result;
 use clap::CommandFactory;
 use dioxionary::{
     cli::{Action, Cli, Parser},
-    history, list_dicts, query, repl,
+    dict::is_enword,
+    history, list_dicts, query, query_fuzzy, repl, QueryStatus,
 };
 use std::env;
 
@@ -28,22 +29,7 @@ fn main() -> Result<()> {
                 let word = w.word;
                 let path = &w.local;
                 let read_aloud = w.read_aloud;
-                if let Some(word_list) = word {
-                    let mut found = false;
-                    word_list.into_iter().for_each(|word| {
-                        if let Err(e) = query(online, local_first, exact, word, path, read_aloud) {
-                            eprintln!("{:?}", e);
-                        } else {
-                            found = true;
-                        }
-                    });
-                    if !found {
-                        std::process::exit(1);
-                    }
-                    Ok(())
-                } else {
-                    repl(online, local_first, exact, path, read_aloud)
-                }
+                lookup(word, online, local_first, exact, path, read_aloud)
             }
             Action::Dicts => list_dicts(),
             Action::Review => dioxionary::review::main(),
@@ -55,21 +41,33 @@ fn main() -> Result<()> {
         let word = cli.word;
         let path = &cli.local;
         let read_aloud = cli.read_aloud;
-        if let Some(word_list) = word {
-            let mut found = false;
-            word_list.into_iter().for_each(|word| {
-                if let Err(e) = query(online, local_first, exact, word, path, read_aloud) {
-                    eprintln!("{:?}", e);
-                } else {
-                    found = true;
+        lookup(word, online, local_first, exact, path, read_aloud)
+    }
+}
+
+fn lookup(
+    words: Option<Vec<String>>,
+    online: bool,
+    local_first: bool,
+    exact: bool,
+    path: &Option<String>,
+    read_aloud: bool,
+) -> Result<()> {
+    if let Some(word_list) = words {
+        for word in word_list {
+            let word = word.trim();
+            if let Ok((found, s)) = query(word) {
+                println!("{s}");
+                if found != QueryStatus::NotFound && is_enword(word) {
+                    history::add_history(word.to_owned())?;
                 }
-            });
-            if !found {
-                std::process::exit(1);
+                if found != QueryStatus::FoundLocally {
+                    let _ = query_fuzzy(word);
+                }
             }
-            Ok(())
-        } else {
-            repl(online, local_first, exact, path, read_aloud)
         }
+        Ok(())
+    } else {
+        repl(online, local_first, exact, path, read_aloud)
     }
 }

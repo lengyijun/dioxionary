@@ -14,7 +14,7 @@ use crate::stardict::SearchAble;
 use anyhow::{anyhow, Context, Result};
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
 use prettytable::{Attr, Cell, Row, Table};
-use rustyline::{error::ReadlineError, Editor};
+use rustyline::error::ReadlineError;
 use stardict::{EntryWrapper, StarDict};
 use std::fs::DirEntry;
 
@@ -57,6 +57,25 @@ fn get_dicts_entries() -> Result<Vec<DirEntry>> {
     Ok(dicts)
 }
 
+fn get_dics() -> Vec<Box<dyn SearchAble>> {
+    let mut dicts: Vec<Box<dyn SearchAble>> = vec![Box::new(logseq::Logseq {})];
+    if let Ok(ds) = get_dicts_entries() {
+        for d in ds {
+            if let Ok(x) = StarDict::new(d.path()) {
+                dicts.push(Box::new(x));
+            }
+        }
+    }
+    dicts
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum QueryStatus {
+    FoundLocally,
+    FoundOnline,
+    NotFound,
+}
+
 /// Look up a word with many flags.
 ///
 /// # Params
@@ -71,127 +90,79 @@ fn get_dicts_entries() -> Result<Vec<DirEntry>> {
 /// - `/terraria`: enable fuzzy searching.
 /// - `|terraria`: disable fuzzy searching.
 /// - `@terraria`: use online dictionary.
-pub fn query(
-    online: bool,
-    local_first: bool,
-    exact: bool,
-    word: String,
-    path: &Option<String>,
-    read_aloud: bool,
-) -> Result<()> {
-    let mut word = word.as_str().trim();
-    let online = word.chars().next().map_or(online, |c| {
-        if c == '@' {
-            word = &word[1..];
-            true
-        } else {
-            online
-        }
-    });
+pub fn query(word: &str) -> Result<(QueryStatus, String)> {
+    let mut found = QueryStatus::NotFound;
+    let mut res = String::new();
 
-    let exact = match word.chars().next() {
-        Some('|') => {
-            word = &word[1..];
-            true
-        }
-        Some('/') => {
-            word = &word[1..];
-            false
-        }
-        _ => exact,
-    };
+    let dicts = get_dics();
 
-    let len = word.len();
-    let read_aloud = match word.chars().last() {
-        Some('~') => {
-            word = &word[..len - 1];
-            true
-        }
-        _ => read_aloud,
-    };
-
-    if online {
-        // only use online dictionary
-        let word_item = dict::WordItem::lookup_online(word)?;
-        println!("{}\n", word_item);
-    } else {
-        let mut dicts: Vec<Box<dyn SearchAble>> = vec![Box::new(logseq::Logseq {})];
-        if let Some(path) = path {
-            dicts.push(Box::new(StarDict::new(path.into())?));
-        } else {
-            for d in get_dicts_entries()? {
-                dicts.push(Box::new(StarDict::new(d.path())?));
+    for d in &dicts {
+        match d.exact_lookup(word) {
+            Some(entry) => {
+                res += entry.trans.as_ref();
+                res += "\n\n";
+                found = QueryStatus::FoundLocally;
+            }
+            _ => {
+                // eprintln!("Found nothing in {}", d.dict_name())
             }
         }
+    }
 
-        let mut found = false;
-        for d in &dicts {
-            match d.exact_lookup(word) {
-                Some(entry) => {
-                    println!("{}\n", entry.trans);
-                    found = true;
-                }
-                _ => {
-                    // eprintln!("Found nothing in {}", d.dict_name())
-                }
-            }
+    if found == QueryStatus::NotFound {
+        if let Ok(word_item) = dict::WordItem::lookup_online(word) {
+            res += &word_item.to_string();
+            res += "\n\n";
+            found = QueryStatus::FoundOnline;
         }
+    }
 
-        if !found && local_first {
-            if let Ok(word_item) = dict::WordItem::lookup_online(word) {
-                println!("{}\n", word_item);
-            }
-        }
+    // ignore audio error
+    let _ = dict::read_aloud(word);
 
-        if !found && !exact {
-            let v = dicts
-                .iter()
-                .flat_map(|dict| {
-                    dict.fuzzy_lookup(word)
-                        .into_iter()
-                        .map(|entry| EntryWrapper {
-                            dict_name: dict.dict_name(),
-                            entry,
-                        })
+    Ok((found, res))
+}
+
+pub fn query_fuzzy(word: &str) -> Result<()> {
+    let dicts = get_dics();
+
+    let v = dicts
+        .iter()
+        .flat_map(|dict| {
+            dict.fuzzy_lookup(word)
+                .into_iter()
+                .map(|entry| EntryWrapper {
+                    dict_name: dict.dict_name(),
+                    entry,
                 })
-                .collect::<Vec<_>>();
-            if !v.is_empty() {
-                let mut last_selection = 0;
-                loop {
-                    if let Some(selection) = Select::with_theme(&ColorfulTheme::default())
-                        .items(&v)
-                        .default(last_selection)
-                        .interact_on_opt(&Term::stderr())?
-                    {
-                        last_selection = selection;
-                        let EntryWrapper { entry, .. } = &v[selection];
-                        println!("{}\n{}\n", entry.word, entry.trans);
-                    }
-                }
-            } else {
-                eprintln!("Nothing similar to mouth bit, sorry :(")
+        })
+        .collect::<Vec<_>>();
+    if !v.is_empty() {
+        let mut last_selection = 0;
+        loop {
+            if let Some(selection) = Select::with_theme(&ColorfulTheme::default())
+                .items(&v)
+                .default(last_selection)
+                .interact_on_opt(&Term::stderr())?
+            {
+                last_selection = selection;
+                let EntryWrapper { entry, .. } = &v[selection];
+                println!("{}\n{}\n", entry.word, entry.trans);
             }
         }
+    } else {
+        eprintln!("Nothing similar to mouth bit, sorry :(");
     }
-
-    if is_basic_english(word) {
-        history::add_history(word.to_owned()).with_context(|| "Cannot add to history")?;
-    }
-
-    if read_aloud {
-        dict::read_aloud(word)?;
-    }
-
     Ok(())
 }
 
 /// Look up a word with many flags interactively using [query].
 pub fn repl(
-    online: bool,
-    local_first: bool,
-    exact: bool,
-    path: &Option<String>,
-    read_aloud: bool,
+    _online: bool,
+    _local_first: bool,
+    _exact: bool,
+    _path: &Option<String>,
+    _read_aloud: bool,
 ) -> Result<()> {
     let mut rl = rustyline::DefaultEditor::new().with_context(|| "Failed to read lines")?;
     loop {
@@ -199,8 +170,13 @@ pub fn repl(
         match readline {
             Ok(word) => {
                 let _ = rl.add_history_entry(&word);
-                if let Err(e) = query(online, local_first, exact, word, path, read_aloud) {
-                    println!("{:?}", e);
+                match query(&word) {
+                    Ok((_, s)) => {
+                        println!("{s}");
+                    }
+                    Err(e) => {
+                        eprintln!("{:?}", e);
+                    }
                 }
             }
             Err(ReadlineError::Interrupted) => break Ok(()),
@@ -228,8 +204,4 @@ pub fn list_dicts() -> Result<()> {
     });
     table.printstd();
     Ok(())
-}
-
-fn is_basic_english(text: &str) -> bool {
-    text.chars().all(|c| c.is_ascii_alphanumeric())
 }

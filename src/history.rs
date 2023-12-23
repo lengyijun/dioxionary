@@ -1,6 +1,6 @@
 //! History query and addition using [sqlite](https://sqlite.org/index.html).
 use anyhow::{Context, Result};
-use chrono::Utc;
+
 use dirs::cache_dir;
 use prettytable::{Attr, Cell, Row, Table};
 use rusqlite::Connection;

@@ -2,15 +2,10 @@ use anyhow::{Context, Result};
 use chrono::{prelude::*, Duration};
 use dirs::cache_dir;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::{
-    collections::HashMap,
-    fs,
-    io::{Read, Write},
-    path::PathBuf,
-};
 
-#[derive(Serialize, Deserialize)]
+use std::{collections::HashMap, fs, path::PathBuf};
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Sm {
     /// the number of times the card has been successfully recalled in a row since the last time it was not.
     n: u32,
@@ -42,6 +37,7 @@ impl Sm {
     // requires{0 <= user_grade <= 5}
     fn sm2(&self, user_grade: u8) -> Self {
         let n: u32;
+        #[allow(non_snake_case)]
         let I: u32;
 
         if user_grade >= 3 {
@@ -72,7 +68,7 @@ impl Sm {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Deck(pub HashMap<String, Sm>);
 
 impl Deck {
@@ -93,16 +89,10 @@ impl Deck {
     }
 
     fn load_inner() -> Result<Self> {
-        match get_json_location() {
-            Ok(path) => {
-                let mut file = std::fs::File::open(path)?;
-                let mut contents = String::new();
-                file.read_to_string(&mut contents)?;
-                let hm: HashMap<String, Sm> = serde_json::from_str(&contents)?;
-                Ok(Self(hm))
-            }
-            Err(_) => Ok(Self::default()),
-        }
+        let path = get_json_location()?;
+        let contents = std::fs::read_to_string(path)?;
+        let hm: HashMap<String, Sm> = serde_json::from_str(&contents)?;
+        Ok(Self(hm))
     }
 
     pub fn load() -> Self {
@@ -115,12 +105,12 @@ impl Deck {
     pub fn dump(&self) -> Result<()> {
         let json_string = serde_json::to_string(&self.0)?;
         let path = get_json_location()?;
-        let mut file = fs::OpenOptions::new().write(true).create(true).open(path)?;
-        file.write_all(json_string.as_bytes())?;
+        fs::write(path, json_string)?;
         Ok(())
     }
 
-    pub fn fake_data() -> Self {
+    #[cfg(test)]
+    fn fake_data() -> Self {
         Self(
             [(
                 "hello".to_owned(),

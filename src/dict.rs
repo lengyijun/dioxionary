@@ -15,10 +15,9 @@ fn gen_url(word: &str) -> String {
 }
 
 /// Is an English word?
-fn is_enword(word: &str) -> bool {
-    word.as_bytes()
-        .iter()
-        .all(|x| x.is_ascii_alphabetic() || x.is_ascii_whitespace())
+pub fn is_enword(word: &str) -> bool {
+    word.chars()
+        .all(|c| c.is_ascii_alphanumeric() || c.is_ascii_whitespace())
 }
 
 /// Get web dictionary html by word.
@@ -95,20 +94,6 @@ fn en2zh(html: &Html) -> Result<String> {
     {
         res.push_str(format!("{} {}\n", i.0, i.1).as_str());
     }
-    Ok(res)
-}
-
-/// Get the diffculty level of the word from html.
-fn get_exam_type(html: &Html) -> Result<Vec<String>> {
-    let types = Selector::parse(".exam_type-value")
-        .map_err(|_| anyhow!("Failed to select the fields of .exam_type-value in the HTML body"))?;
-    let mut res: Vec<String> = Vec::new();
-    html.select(&types).for_each(|x| {
-        x.text()
-            .collect::<Vec<_>>()
-            .iter()
-            .for_each(|x| res.push(x.to_string()))
-    });
     Ok(res)
 }
 

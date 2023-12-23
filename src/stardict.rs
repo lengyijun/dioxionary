@@ -409,6 +409,7 @@ mod test {
     use itertools::izip;
 
     use super::StarDict;
+    use crate::stardict::SearchAble;
 
     #[test]
     fn load_stardict() {

@@ -1,15 +1,15 @@
-use crate::supermemo::Deck;
 use crate::theme::THEME;
-use anyhow::{anyhow, Context, Result};
+use crate::{query, supermemo::Deck};
+use anyhow::Result;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use itertools::Itertools;
 use ratatui::{prelude::*, widgets::*};
+use std::io;
 use std::time::{Duration, Instant};
-use std::{error::Error, io};
 
 #[derive(Clone, Copy)]
 enum AnswerStatus {
@@ -86,8 +86,8 @@ pub fn main() -> Result<()> {
 }
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<ExitCode> {
-    let mut deck = Deck::fake_data();
-    let Some(mut app) = next(&deck) else {
+    let mut deck = Deck::load();
+    let Some(mut app) = next(&mut deck) else {
         return Ok(ExitCode::OutOfCard);
     };
 
@@ -98,7 +98,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<ExitCode> {
         if let Event::Key(key) = event::read()? {
             match &app.answer_status {
                 AnswerStatus::Show => match key.code {
-                    KeyCode::Char('h') => {
+                    KeyCode::Char('h') | KeyCode::Char('H') => {
                         let spent_time = app.spent_time.unwrap();
                         let q = if spent_time < Duration::from_secs(5) {
                             2
@@ -107,12 +107,12 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<ExitCode> {
                         };
                         deck.update(app.question.to_owned(), q);
 
-                        let Some(new_app) = next(&deck) else {
+                        let Some(new_app) = next(&mut deck) else {
                             return Ok(ExitCode::OutOfCard);
                         };
                         app = new_app
                     }
-                    KeyCode::Char('g') => {
+                    KeyCode::Char('g') | KeyCode::Char('G') => {
                         let spent_time = app.spent_time.unwrap();
                         let q = if spent_time < Duration::from_secs(5) {
                             5
@@ -123,15 +123,15 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<ExitCode> {
                         };
                         deck.update(app.question.to_owned(), q);
 
-                        let Some(new_app) = next(&deck) else {
+                        let Some(new_app) = next(&mut deck) else {
                             return Ok(ExitCode::OutOfCard);
                         };
                         app = new_app
                     }
-                    KeyCode::Char('f') => {
+                    KeyCode::Char('f') | KeyCode::Char('F') => {
                         deck.update(app.question.to_owned(), 0);
 
-                        let Some(new_app) = next(&deck) else {
+                        let Some(new_app) = next(&mut deck) else {
                             return Ok(ExitCode::OutOfCard);
                         };
                         app = new_app
@@ -214,20 +214,19 @@ fn ui(f: &mut Frame, app: &App) {
     f.render_widget(buttons, chunks[2]);
 }
 
-fn next(deck: &Deck) -> Option<App> {
+fn next(deck: &mut Deck) -> Option<App> {
     let Some(question) = deck.search_reviewable() else {
         return None;
     };
-    let answer = ghost_get_answer(&question);
-
-    Some(App {
-        question,
-        answer,
-        answer_status: AnswerStatus::Hide,
-        spent_time: None,
-    })
-}
-
-fn ghost_get_answer(_question: &str) -> String {
-    "this is answer".to_owned()
+    if let Ok((_, answer)) = query(&question) {
+        Some(App {
+            question,
+            answer,
+            answer_status: AnswerStatus::Hide,
+            spent_time: None,
+        })
+    } else {
+        deck.0.remove(&question);
+        next(deck)
+    }
 }
