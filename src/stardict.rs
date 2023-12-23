@@ -280,7 +280,7 @@ impl Ifo {
         let mut f =
             File::create(path).with_context(|| format!("Failed to create idx file {:?}", path))?;
         f.write_all("StarDict's dict ifo file\n".as_bytes())?;
-        f.write_all(format!("version={}\n", self.version.to_string()).as_bytes())?;
+        f.write_all(format!("version={}\n", self.version).as_bytes())?;
         f.write_all(format!("wordcount={}\n", self.wordcount).as_bytes())?;
         f.write_all(format!("idxfilesize={}\n", self.idxfilesize).as_bytes())?;
         f.write_all(format!("bookname={}\n", self.bookname).as_bytes())?;
@@ -297,7 +297,7 @@ enum DictType {
 impl DictType {
     fn load_dz(path: &Path) -> Result<String> {
         let s =
-            read(&path).with_context(|| format!("Failed to open stardict directory {:?}", path))?;
+            read(path).with_context(|| format!("Failed to open stardict directory {:?}", path))?;
         let mut d = GzDecoder::new(s.as_slice());
         let mut contents = String::new();
         d.read_to_string(&mut contents).with_context(|| {
