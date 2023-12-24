@@ -7,6 +7,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use itertools::Itertools;
+use ratatui::style::Stylize;
 use ratatui::{prelude::*, widgets::*};
 use std::io;
 use std::time::{Duration, Instant};
@@ -38,6 +39,11 @@ struct App {
     answer: String,
     answer_status: AnswerStatus,
     spent_time: Option<Duration>,
+
+    vertical_scroll_state: ScrollbarState,
+    horizontal_scroll_state: ScrollbarState,
+    vertical_scroll: usize,
+    horizontal_scroll: usize,
 }
 
 impl App {
@@ -92,7 +98,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<ExitCode> {
     };
 
     loop {
-        terminal.draw(|f| ui(f, &app))?;
+        terminal.draw(|f| ui(f, &mut app))?;
         let start = Instant::now();
 
         if let Event::Key(key) = event::read()? {
@@ -137,6 +143,28 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<ExitCode> {
                         app = new_app
                     }
                     KeyCode::Char(' ') => app.toggle(),
+
+                    KeyCode::Down => {
+                        app.vertical_scroll = app.vertical_scroll.saturating_add(1);
+                        app.vertical_scroll_state =
+                            app.vertical_scroll_state.position(app.vertical_scroll);
+                    }
+                    KeyCode::Up => {
+                        app.vertical_scroll = app.vertical_scroll.saturating_sub(1);
+                        app.vertical_scroll_state =
+                            app.vertical_scroll_state.position(app.vertical_scroll);
+                    }
+                    KeyCode::Left => {
+                        app.horizontal_scroll = app.horizontal_scroll.saturating_sub(1);
+                        app.horizontal_scroll_state =
+                            app.horizontal_scroll_state.position(app.horizontal_scroll);
+                    }
+                    KeyCode::Right => {
+                        app.horizontal_scroll = app.horizontal_scroll.saturating_add(1);
+                        app.horizontal_scroll_state =
+                            app.horizontal_scroll_state.position(app.horizontal_scroll);
+                    }
+
                     KeyCode::Char('q') | KeyCode::Esc => return Ok(ExitCode::ManualExit),
                     _ => {}
                 },
@@ -157,7 +185,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<ExitCode> {
     }
 }
 
-fn ui(f: &mut Frame, app: &App) {
+fn ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -174,8 +202,28 @@ fn ui(f: &mut Frame, app: &App) {
 
     let answer = Paragraph::new(app.get_answer())
         .alignment(Alignment::Left)
-        .block(Block::default().borders(Borders::ALL));
+        .block(Block::default().borders(Borders::ALL))
+        .scroll((app.vertical_scroll as u16, (app.horizontal_scroll as u16)));
     f.render_widget(answer, chunks[1]);
+    f.render_stateful_widget(
+        Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("↑"))
+            .end_symbol(Some("↓")),
+        chunks[1],
+        &mut app.vertical_scroll_state,
+    );
+    f.render_stateful_widget(
+        Scrollbar::default()
+            .orientation(ScrollbarOrientation::HorizontalBottom)
+            .thumb_symbol("🬋")
+            .end_symbol(None),
+        chunks[1].inner(&Margin {
+            vertical: 0,
+            horizontal: 1,
+        }),
+        &mut app.horizontal_scroll_state,
+    );
 
     let escape_keys = [("Q/Esc", "Quit")];
     let hide_keys = [("<Space>", "Show answer")];
@@ -219,14 +267,27 @@ fn next(deck: &mut Deck) -> Option<App> {
         return None;
     };
     if let Ok((_, answer)) = query(&question) {
+        let answer = answer.trim();
+        let (height, width) = get_width_and_height(answer);
         Some(App {
             question,
-            answer,
+            answer: answer.to_owned(),
             answer_status: AnswerStatus::Hide,
             spent_time: None,
+            vertical_scroll_state: ScrollbarState::new(height),
+            horizontal_scroll_state: ScrollbarState::new(width),
+            vertical_scroll: 0,
+            horizontal_scroll: 0,
         })
     } else {
         deck.0.remove(&question);
         next(deck)
     }
+}
+
+fn get_width_and_height(s: &str) -> (usize, usize) {
+    let v: Vec<_> = s.split("\n").collect();
+    let height = v.len();
+    let width = v.into_iter().fold(10usize, |res, x| Ord::max(res, x.len()));
+    (height, width)
 }
