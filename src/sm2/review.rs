@@ -186,7 +186,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     let answer = Paragraph::new(app.get_answer())
         .alignment(Alignment::Left)
         .block(Block::default().borders(Borders::ALL))
-        .scroll((app.vertical_scroll as u16, (app.horizontal_scroll as u16)));
+        .scroll((app.vertical_scroll as u16, app.horizontal_scroll as u16));
     f.render_widget(answer, chunks[1]);
     f.render_stateful_widget(
         Scrollbar::default()

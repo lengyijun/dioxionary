@@ -7,6 +7,8 @@ use std::{collections::HashMap, fs, path::PathBuf};
 
 use crate::spaced_repetition::SpacedRepetiton;
 
+pub mod review;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Sm {
     /// the number of times the card has been successfully recalled in a row since the last time it was not.

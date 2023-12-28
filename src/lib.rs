@@ -5,7 +5,6 @@ pub mod cli;
 pub mod dict;
 pub mod history;
 pub mod logseq;
-pub mod review;
 pub mod review_helper;
 pub mod sm2;
 pub mod spaced_repetition;
