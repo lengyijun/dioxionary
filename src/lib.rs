@@ -1,8 +1,11 @@
 #![feature(let_chains)]
+#![feature(lazy_cell)]
+
 //! StarDict in Rust!
 //! Use offline or online dictionary to look up words and memorize words in the terminal!
 pub mod cli;
 pub mod dict;
+pub mod fsrs;
 pub mod history;
 pub mod logseq;
 pub mod review_helper;
