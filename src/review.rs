@@ -1,6 +1,7 @@
-use crate::query;
+use crate::review_helper::{get_width_and_height, ExitCode};
 use crate::spaced_repetition::SpacedRepetiton;
 use crate::theme::THEME;
+use crate::{query, review_helper::AnswerStatus};
 use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
@@ -12,27 +13,6 @@ use ratatui::style::Stylize;
 use ratatui::{prelude::*, widgets::*};
 use std::io;
 use std::time::{Duration, Instant};
-
-#[derive(Clone, Copy)]
-enum AnswerStatus {
-    Show,
-    Hide,
-}
-
-#[derive(Clone, Copy)]
-enum ExitCode {
-    ManualExit,
-    OutOfCard,
-}
-
-impl AnswerStatus {
-    fn flip(self) -> Self {
-        match self {
-            AnswerStatus::Show => AnswerStatus::Hide,
-            AnswerStatus::Hide => AnswerStatus::Show,
-        }
-    }
-}
 
 /// App holds the state of the application
 struct App {
@@ -289,11 +269,4 @@ where
         spaced_repetition.remove(&question);
         next(spaced_repetition)
     }
-}
-
-fn get_width_and_height(s: &str) -> (usize, usize) {
-    let v: Vec<_> = s.split("\n").collect();
-    let height = v.len();
-    let width = v.into_iter().fold(10usize, |res, x| Ord::max(res, x.len()));
-    (height, width)
 }
