@@ -25,7 +25,8 @@ fn check_cache() -> Result<PathBuf> {
 
 /// Add a looked up word to history.
 pub fn add_history(word: String) -> Result<()> {
-    crate::sm2::Deck::add_history(word)
+    crate::fsrs::Deck::add_history(word)
+    // crate::sm2::Deck::add_history(word)
 }
 
 /// List sorted or not history of a word type or all types.

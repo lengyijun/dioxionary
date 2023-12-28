@@ -32,7 +32,10 @@ fn main() -> Result<()> {
                 lookup(word, online, local_first, exact, path, read_aloud)
             }
             Action::Dicts => list_dicts(),
-            Action::Review => dioxionary::sm2::review::main(),
+            Action::Review => {
+                // dioxionary::sm2::review::main()
+                dioxionary::fsrs::review::main()
+            }
         }
     } else {
         let online = cli.online;
