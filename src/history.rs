@@ -7,7 +7,7 @@ use rusqlite::Connection;
 use std::fs::create_dir;
 use std::path::PathBuf;
 
-use crate::supermemo::{Deck, Sm};
+use crate::spaced_repetition::SpacedRepetiton;
 
 /// Allowed diffculty level types of a word.
 pub static ALLOWED_TYPES: [&str; 7] = ["CET4", "CET6", "TOEFL", "IELTS", "GMAT", "GRE", "SAT"];
@@ -25,14 +25,7 @@ fn check_cache() -> Result<PathBuf> {
 
 /// Add a looked up word to history.
 pub fn add_history(word: String) -> Result<()> {
-    let mut deck = Deck::load();
-    match deck.0.entry(word) {
-        std::collections::hash_map::Entry::Occupied(_) => {}
-        std::collections::hash_map::Entry::Vacant(v) => {
-            v.insert(Sm::default());
-        }
-    }
-    deck.dump()
+    crate::sm2::Deck::add_history(word)
 }
 
 /// List sorted or not history of a word type or all types.

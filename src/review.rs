@@ -1,5 +1,6 @@
+use crate::query;
+use crate::spaced_repetition::SpacedRepetiton;
 use crate::theme::THEME;
-use crate::{query, supermemo::Deck};
 use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
@@ -67,7 +68,7 @@ pub fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let res = run_app(&mut terminal);
+    let res = run_app(&mut terminal, crate::sm2::Deck::load());
 
     // restore terminal
     disable_raw_mode()?;
@@ -91,9 +92,11 @@ pub fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<ExitCode> {
-    let mut deck = Deck::load();
-    let Some(mut app) = next(&mut deck) else {
+fn run_app<B: Backend, T: SpacedRepetiton>(
+    terminal: &mut Terminal<B>,
+    mut spaced_repetition: T,
+) -> Result<ExitCode> {
+    let Some(mut app) = next(&mut spaced_repetition) else {
         return Ok(ExitCode::OutOfCard);
     };
 
@@ -111,9 +114,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<ExitCode> {
                         } else {
                             1
                         };
-                        deck.update(app.question.to_owned(), q);
+                        spaced_repetition.update_and_dump(app.question.to_owned(), q)?;
 
-                        let Some(new_app) = next(&mut deck) else {
+                        let Some(new_app) = next(&mut spaced_repetition) else {
                             return Ok(ExitCode::OutOfCard);
                         };
                         app = new_app
@@ -127,17 +130,17 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<ExitCode> {
                         } else {
                             3
                         };
-                        deck.update(app.question.to_owned(), q);
+                        spaced_repetition.update_and_dump(app.question.to_owned(), q)?;
 
-                        let Some(new_app) = next(&mut deck) else {
+                        let Some(new_app) = next(&mut spaced_repetition) else {
                             return Ok(ExitCode::OutOfCard);
                         };
                         app = new_app
                     }
                     KeyCode::Char('f') | KeyCode::Char('F') => {
-                        deck.update(app.question.to_owned(), 0);
+                        spaced_repetition.update_and_dump(app.question.to_owned(), 0)?;
 
-                        let Some(new_app) = next(&mut deck) else {
+                        let Some(new_app) = next(&mut spaced_repetition) else {
                             return Ok(ExitCode::OutOfCard);
                         };
                         app = new_app
@@ -262,8 +265,11 @@ fn ui(f: &mut Frame, app: &mut App) {
     f.render_widget(buttons, chunks[2]);
 }
 
-fn next(deck: &mut Deck) -> Option<App> {
-    let Some(question) = deck.search_reviewable() else {
+fn next<T>(spaced_repetition: &mut T) -> Option<App>
+where
+    T: SpacedRepetiton,
+{
+    let Some(question) = spaced_repetition.next_to_review() else {
         return None;
     };
     if let Ok((_, answer)) = query(&question) {
@@ -280,8 +286,8 @@ fn next(deck: &mut Deck) -> Option<App> {
             horizontal_scroll: 0,
         })
     } else {
-        deck.0.remove(&question);
-        next(deck)
+        spaced_repetition.remove(&question);
+        next(spaced_repetition)
     }
 }
 

@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
 use chrono::{prelude::*, Duration};
-use dirs::cache_dir;
+use dirs::data_dir;
 use serde::{Deserialize, Serialize};
 
 use std::{collections::HashMap, fs, path::PathBuf};
+
+use crate::spaced_repetition::SpacedRepetiton;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Sm {
@@ -72,41 +74,11 @@ impl Sm {
 pub struct Deck(pub HashMap<String, Sm>);
 
 impl Deck {
-    pub fn search_reviewable(&self) -> Option<String> {
-        for (k, v) in &self.0 {
-            if v.next_review_time() <= Local::now() {
-                return Some(k.to_owned());
-            }
-        }
-        None
-    }
-
-    // requires{0 <= q <= 5}
-    pub fn update(&mut self, question: String, q: u8) {
-        let sm = self.0[&question].sm2(q);
-        self.0.insert(question, sm);
-        let _ = self.dump();
-    }
-
     fn load_inner() -> Result<Self> {
         let path = get_json_location()?;
         let contents = std::fs::read_to_string(path)?;
         let hm: HashMap<String, Sm> = serde_json::from_str(&contents)?;
         Ok(Self(hm))
-    }
-
-    pub fn load() -> Self {
-        match Self::load_inner() {
-            Ok(s) => s,
-            Err(_) => Self::default(),
-        }
-    }
-
-    pub fn dump(&self) -> Result<()> {
-        let json_string = serde_json::to_string(&self.0)?;
-        let path = get_json_location()?;
-        fs::write(path, json_string)?;
-        Ok(())
     }
 
     #[cfg(test)]
@@ -127,14 +99,60 @@ impl Deck {
     }
 }
 
+impl SpacedRepetiton for Deck {
+    fn next_to_review(&self) -> Option<String> {
+        for (k, v) in &self.0 {
+            if v.next_review_time() <= Local::now() {
+                return Some(k.to_owned());
+            }
+        }
+        None
+    }
+
+    fn dump(&self) -> Result<()> {
+        let json_string = serde_json::to_string(&self.0)?;
+        let path = get_json_location()?;
+        fs::write(path, json_string)?;
+        Ok(())
+    }
+
+    fn load() -> Self {
+        match Self::load_inner() {
+            Ok(s) => s,
+            Err(_) => Self::default(),
+        }
+    }
+
+    fn add_fresh_word(&mut self, word: String) {
+        match self.0.entry(word) {
+            std::collections::hash_map::Entry::Occupied(_) => {}
+            std::collections::hash_map::Entry::Vacant(v) => {
+                v.insert(Sm::default());
+            }
+        }
+    }
+
+    // requires{0 <= q <= 5}
+    fn update(&mut self, question: String, q: u8) {
+        let sm = self.0[&question].sm2(q);
+        let Some(__) = self.0.insert(question, sm) else {
+            unreachable!()
+        };
+    }
+
+    fn remove(&mut self, question: &str) {
+        self.0.remove(question);
+    }
+}
+
 /// Check and generate cache directory path.
 fn get_json_location() -> Result<PathBuf> {
-    let mut path = cache_dir().with_context(|| "Couldn't find cache directory")?;
+    let mut path = data_dir().with_context(|| "Couldn't find cache directory")?;
     path.push("dioxionary");
     if !path.exists() {
         std::fs::create_dir(&path)
             .with_context(|| format!("Failed to create directory {:?}", path))?;
     }
-    path.push("history.json");
+    path.push("sm2.json");
     Ok(path)
 }

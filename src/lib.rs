@@ -6,8 +6,9 @@ pub mod dict;
 pub mod history;
 pub mod logseq;
 pub mod review;
+pub mod sm2;
+pub mod spaced_repetition;
 pub mod stardict;
-pub mod supermemo;
 pub mod theme;
 
 use crate::stardict::SearchAble;
