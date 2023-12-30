@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::env::args;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Write;
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
@@ -74,8 +74,7 @@ fn main() {
         sametypesequence: "m".to_string(),
         dicttype: String::new(),
     };
-    ifo.dump(&file_path.with_extension("ifo"))
-        .expect("can't write ifo");
+    fs::write(&file_path.with_extension("ifo"), ifo.to_string()).expect("can't write ifo");
 
     let items: Vec<(String, u32, u32)> = btree_map
         .into_iter()

@@ -74,7 +74,7 @@ impl StarDict {
         }
 
         let ifo = Ifo::new(ifo.unwrap())?;
-        let idx = Idx::new(idx.unwrap(), ifo.version())?;
+        let idx = Idx::new(idx.unwrap(), ifo.version)?;
         let dict = Dict::new(dict.unwrap());
 
         /*
@@ -268,20 +268,16 @@ impl Ifo {
         }
         Ok(ifo)
     }
+}
 
-    fn version(&self) -> Version {
-        self.version
-    }
-
-    pub fn dump(&self, path: &Path) -> Result<()> {
-        let mut f =
-            File::create(path).with_context(|| format!("Failed to create idx file {:?}", path))?;
-        f.write_all("StarDict's dict ifo file\n".as_bytes())?;
-        f.write_all(format!("version={}\n", self.version).as_bytes())?;
-        f.write_all(format!("wordcount={}\n", self.wordcount).as_bytes())?;
-        f.write_all(format!("idxfilesize={}\n", self.idxfilesize).as_bytes())?;
-        f.write_all(format!("bookname={}\n", self.bookname).as_bytes())?;
-        f.write_all(format!("sametypesequence={}\n", self.sametypesequence).as_bytes())?;
+impl Display for Ifo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "StarDict's dict ifo file")?;
+        writeln!(f, "version={}", self.version)?;
+        writeln!(f, "wordcount={}", self.wordcount)?;
+        writeln!(f, "idxfilesize={}", self.idxfilesize)?;
+        writeln!(f, "bookname={}", self.bookname)?;
+        writeln!(f, "sametypesequence={}", self.sametypesequence)?;
         Ok(())
     }
 }
