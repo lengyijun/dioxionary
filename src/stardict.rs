@@ -110,14 +110,21 @@ impl SearchAble for StarDict {
     }
 
     fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry> {
-        let target_word = target_word.to_lowercase();
+        fn strip_punctuation(w: &str) -> String {
+            w.to_lowercase()
+                .chars()
+                .filter(|c| !c.is_ascii_punctuation() && !c.is_whitespace())
+                .collect()
+        }
+
+        let target_word = strip_punctuation(target_word);
         // bury vs buried
         let mut min_dist = 3;
         let mut res: Vec<&(String, usize, usize)> = Vec::new();
 
         for x in self.idx.items.iter() {
             let (word, _offset, _size) = x;
-            let dist = strsim::levenshtein(&target_word, &word.to_lowercase());
+            let dist = strsim::levenshtein(&target_word, &strip_punctuation(word));
             match dist.cmp(&min_dist) {
                 std::cmp::Ordering::Less => {
                     min_dist = dist;
