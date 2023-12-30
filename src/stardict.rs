@@ -4,7 +4,6 @@ use eio::{FromBytes, ToBytes};
 use flate2::read::GzDecoder;
 use std::borrow::Cow;
 use std::cell::OnceCell;
-use std::cmp::min;
 use std::fmt::{Debug, Display};
 use std::fs::{self, read, File};
 use std::io::{prelude::*, BufReader};
@@ -118,7 +117,7 @@ impl SearchAble for StarDict {
 
         for x in self.idx.items.iter() {
             let (word, _offset, _size) = x;
-            let dist = min_edit_distance(&target_word, &word.to_lowercase());
+            let dist = strsim::levenshtein(&target_word, &word.to_lowercase());
             match dist.cmp(&min_dist) {
                 std::cmp::Ordering::Less => {
                     min_dist = dist;
@@ -434,30 +433,4 @@ mod test {
             fuzzy.iter().find(|w| w.word == cor).unwrap();
         }
     }
-}
-
-fn min_edit_distance(pattern: &str, text: &str) -> usize {
-    let pattern_chars: Vec<_> = pattern.chars().collect();
-    let text_chars: Vec<_> = text.chars().collect();
-    let mut dist = vec![vec![0; pattern_chars.len() + 1]; text_chars.len() + 1];
-
-    #[allow(clippy::needless_range_loop)]
-    for i in 0..=text_chars.len() {
-        dist[i][0] = i;
-    }
-
-    for j in 0..=pattern_chars.len() {
-        dist[0][j] = j;
-    }
-
-    for i in 1..=text_chars.len() {
-        for j in 1..=pattern_chars.len() {
-            dist[i][j] = if text_chars[i - 1] == pattern_chars[j - 1] {
-                dist[i - 1][j - 1]
-            } else {
-                min(min(dist[i][j - 1], dist[i - 1][j]), dist[i - 1][j - 1]) + 1
-            }
-        }
-    }
-    dist[text_chars.len()][pattern_chars.len()]
 }
