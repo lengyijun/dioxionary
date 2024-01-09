@@ -4,6 +4,7 @@ use dirs::home_dir;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use walkdir::DirEntry;
 use walkdir::WalkDir;
 
 pub struct Logseq {}
@@ -27,6 +28,13 @@ impl SearchAble for Logseq {
 
 impl Logseq {
     fn find<'a>(&'a self, word: &str) -> Option<Entry<'a>> {
+        self.find_path(word).map(|dir_entry| Entry {
+            word: word.to_string(),
+            trans: std::borrow::Cow::Owned(read_file_to_string(dir_entry.path())),
+        })
+    }
+
+    fn find_path<'a>(&'a self, word: &str) -> Option<DirEntry> {
         let word = word.to_lowercase();
         let root = home_dir().unwrap().join("girl-logseq").join("pages");
         'outer: for entry in WalkDir::new(root) {
@@ -39,18 +47,12 @@ impl Logseq {
                 continue;
             };
             if file_name.to_lowercase() == format!("{word}.md") {
-                return Some(Entry {
-                    word: word.to_string(),
-                    trans: std::borrow::Cow::Owned(read_file_to_string(path)),
-                });
+                return Some(entry);
             }
             if let Some((_, file_name)) = file_name.rsplit_once("%2F")
                 && file_name.to_lowercase() == format!("{word}.md")
             {
-                return Some(Entry {
-                    word: word.to_string(),
-                    trans: std::borrow::Cow::Owned(read_file_to_string(path)),
-                });
+                return Some(entry);
             }
 
             let Ok(file) = File::open(path) else { continue };
@@ -63,10 +65,7 @@ impl Logseq {
                         unreachable!()
                     };
                     if line.split(',').any(|x| x.trim().to_lowercase() == word) {
-                        return Some(Entry {
-                            word: word.to_string(),
-                            trans: std::borrow::Cow::Owned(read_file_to_string(path)),
-                        });
+                        return Some(entry);
                     }
                 } else if line.starts_with("- ") {
                     break;
