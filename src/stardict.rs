@@ -4,12 +4,33 @@ use eio::{FromBytes, ToBytes};
 use flate2::read::GzDecoder;
 use std::borrow::Cow;
 use std::cell::OnceCell;
-use std::fmt::{Debug, Display};
+use std::error::Error;
+use std::fmt::{self, Debug, Display};
 use std::fs::{self, read, File};
-use std::io::{prelude::*, BufReader};
+use std::io::{prelude::*, stdout, BufReader};
 use std::path::{Path, PathBuf};
 
+#[derive(Debug)]
+pub struct NotFoundError;
+
+impl fmt::Display for NotFoundError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "NotFoundError")
+    }
+}
+
+impl Error for NotFoundError {}
+
 pub trait SearchAble {
+    fn push_tty(&self, word: &str) -> anyhow::Result<()> {
+        if let Some(entry) = self.exact_lookup(word) {
+            writeln!(stdout(), "{}\n", entry.trans)?;
+            Ok(())
+        } else {
+            Err(NotFoundError.into())
+        }
+    }
+
     fn exact_lookup(&self, word: &str) -> Option<Entry>;
     fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry>;
     fn dict_name(&self) -> &str;

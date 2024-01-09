@@ -1,15 +1,48 @@
 use crate::stardict::Entry;
+use crate::stardict::NotFoundError;
 use crate::stardict::SearchAble;
+use crossterm::terminal;
 use dirs::home_dir;
+use pulldown_cmark_mdcat::resources::{
+    DispatchingResourceHandler, FileResourceHandler, ResourceUrlHandler,
+};
+use pulldown_cmark_mdcat::Settings;
+use pulldown_cmark_mdcat::TerminalProgram;
+use pulldown_cmark_mdcat::TerminalSize;
+use pulldown_cmark_mdcat::Theme;
 use std::fs::File;
+use std::io::stdout;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use syntect::parsing::SyntaxSet;
 use walkdir::DirEntry;
 use walkdir::WalkDir;
 
 pub struct Logseq {}
 
 impl SearchAble for Logseq {
+    fn push_tty(&self, word: &str) -> anyhow::Result<()> {
+        if let Some(p) = self.find_path(word) {
+            let terminal = TerminalProgram::detect();
+            let terminal_size = TerminalSize::detect().unwrap_or_default();
+            let settings = Settings {
+                terminal_capabilities: terminal.capabilities(),
+                terminal_size,
+                syntax_set: &SyntaxSet::load_defaults_newlines(),
+                theme: Theme::default(),
+            };
+            mdcat::process_file(
+                p.path().to_str().unwrap(),
+                &settings,
+                &FileResourceHandler::new(104_857_600),
+                &mut mdcat::output::Output::Stdout(stdout()),
+            )?;
+            Ok(())
+        } else {
+            Err(NotFoundError.into())
+        }
+    }
+
     fn exact_lookup<'a>(&'a self, word: &str) -> Option<Entry<'a>> {
         self.find(word)
     }

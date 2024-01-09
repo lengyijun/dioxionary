@@ -5,7 +5,7 @@ use clap::CommandFactory;
 use dioxionary::{
     cli::{Action, Cli, Parser},
     dict::is_enword,
-    history, list_dicts, query, query_fuzzy, repl, QueryStatus,
+    history, list_dicts, query, query_and_push_tty, query_fuzzy, repl, QueryStatus,
 };
 use std::env;
 
@@ -59,14 +59,12 @@ fn lookup(
     if let Some(word_list) = words {
         for word in word_list {
             let word = word.trim();
-            if let Ok((found, s)) = query(word) {
-                println!("{s}");
-                if found != QueryStatus::NotFound && is_enword(word) {
-                    history::add_history(word.to_owned())?;
-                }
-                if found != QueryStatus::FoundLocally {
-                    let _ = query_fuzzy(word);
-                }
+            let found = query_and_push_tty(word);
+            if found != QueryStatus::NotFound && is_enword(word) {
+                history::add_history(word.to_owned())?;
+            }
+            if found != QueryStatus::FoundLocally {
+                let _ = query_fuzzy(word);
             }
         }
         Ok(())

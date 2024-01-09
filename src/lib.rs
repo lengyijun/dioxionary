@@ -127,6 +127,34 @@ pub fn query(word: &str) -> Result<(QueryStatus, String)> {
     Ok((found, res))
 }
 
+pub fn query_and_push_tty(word: &str) -> QueryStatus {
+    let mut found = QueryStatus::NotFound;
+
+    let dicts = get_dics();
+
+    for d in &dicts {
+        match d.push_tty(word) {
+            Ok(_) => {
+                found = QueryStatus::FoundLocally;
+                println!("\n");
+            }
+            Err(_) => {}
+        }
+    }
+
+    if found == QueryStatus::NotFound {
+        if let Ok(word_item) = dict::WordItem::lookup_online(word) {
+            println!("{}\n\n", &word_item.to_string());
+            found = QueryStatus::FoundOnline;
+        }
+    }
+
+    // ignore audio error
+    let _ = dict::read_aloud(word);
+
+    found
+}
+
 pub fn query_fuzzy(word: &str) -> Result<()> {
     let dicts = get_dics();
 
