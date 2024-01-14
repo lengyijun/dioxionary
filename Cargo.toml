@@ -37,6 +37,7 @@ strsim = "0.10.0"
 pulldown-cmark-mdcat = "2.1.0"
 mdcat = "2.1.0"
 syntect = "5.1.0"
+pulldown-cmark-mdcat-ratatui = { path = "../mdcat-ratatui/pulldown-cmark-mdcat" , package = "pulldown-cmark-mdcat" }
 
 [dependencies.fsrs]
 git = "https://github.com/open-spaced-repetition/fsrs-rs.git"

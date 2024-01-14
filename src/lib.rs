@@ -17,7 +17,9 @@ pub mod theme;
 use crate::stardict::SearchAble;
 use anyhow::{anyhow, Context, Result};
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
+use itertools::Itertools;
 use prettytable::{Attr, Cell, Row, Table};
+use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
 use rustyline::error::ReadlineError;
 use stardict::{EntryWrapper, StarDict};
 use std::fs::DirEntry;
@@ -94,29 +96,21 @@ pub enum QueryStatus {
 /// - `/terraria`: enable fuzzy searching.
 /// - `|terraria`: disable fuzzy searching.
 /// - `@terraria`: use online dictionary.
-pub fn query(word: &str) -> Result<(QueryStatus, String)> {
-    let mut found = QueryStatus::NotFound;
-    let mut res = String::new();
+pub fn query(word: &str) -> Result<(QueryStatus, Vec<PathOrStr>)> {
+    let mut v: Vec<PathOrStr> = get_dics()
+        .into_iter()
+        .filter_map(|d| d.exact_lookup(word))
+        .collect();
 
-    let dicts = get_dics();
-
-    for d in &dicts {
-        match d.exact_lookup(word) {
-            Some(entry) => {
-                res += entry.trans.as_ref();
-                res += "\n\n";
-                found = QueryStatus::FoundLocally;
-            }
-            _ => {
-                // eprintln!("Found nothing in {}", d.dict_name())
-            }
-        }
-    }
+    let mut found = if v.is_empty() {
+        QueryStatus::NotFound
+    } else {
+        QueryStatus::FoundLocally
+    };
 
     if found == QueryStatus::NotFound {
         if let Ok(word_item) = dict::WordItem::lookup_online(word) {
-            res += &word_item.to_string();
-            res += "\n\n";
+            v.push(PathOrStr::NormalStr(word_item.to_string()));
             found = QueryStatus::FoundOnline;
         }
     }
@@ -124,7 +118,7 @@ pub fn query(word: &str) -> Result<(QueryStatus, String)> {
     // ignore audio error
     let _ = dict::read_aloud(word);
 
-    Ok((found, res))
+    Ok((found, v))
 }
 
 pub fn query_and_push_tty(word: &str) -> QueryStatus {
@@ -204,7 +198,9 @@ pub fn repl(
                 let _ = rl.add_history_entry(&word);
                 match query(&word) {
                     Ok((_, s)) => {
+                        /*
                         println!("{s}");
+                         */
                     }
                     Err(e) => {
                         eprintln!("{:?}", e);

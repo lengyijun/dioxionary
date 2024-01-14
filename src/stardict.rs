@@ -2,6 +2,7 @@
 use anyhow::{anyhow, Context, Result};
 use eio::{FromBytes, ToBytes};
 use flate2::read::GzDecoder;
+use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
 use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::error::Error;
@@ -24,14 +25,14 @@ impl Error for NotFoundError {}
 pub trait SearchAble {
     fn push_tty(&self, word: &str) -> anyhow::Result<()> {
         if let Some(entry) = self.exact_lookup(word) {
-            writeln!(stdout(), "{}\n", entry.trans)?;
+            writeln!(stdout(), "{}\n", entry.get_str())?;
             Ok(())
         } else {
             Err(NotFoundError.into())
         }
     }
 
-    fn exact_lookup(&self, word: &str) -> Option<Entry>;
+    fn exact_lookup(&self, word: &str) -> Option<PathOrStr>;
     fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry>;
     fn dict_name(&self) -> &str;
 }
@@ -112,7 +113,7 @@ impl StarDict {
 }
 
 impl SearchAble for StarDict {
-    fn exact_lookup(&self, word: &str) -> Option<Entry> {
+    fn exact_lookup(&self, word: &str) -> Option<PathOrStr> {
         let word = word.to_lowercase();
         if let Ok(pos) = self
             .idx
@@ -121,10 +122,7 @@ impl SearchAble for StarDict {
         {
             let (word, offset, size) = &self.idx.items[pos];
             let trans = self.dict.get(*offset, *size);
-            Some(Entry {
-                word: word.to_string(),
-                trans: std::borrow::Cow::Borrowed(trans),
-            })
+            Some(PathOrStr::NormalStr(trans.to_owned()))
         } else {
             None
         }

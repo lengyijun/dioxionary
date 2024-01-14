@@ -9,6 +9,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use itertools::Itertools;
+use pulldown_cmark_mdcat_ratatui::markdown_widget::{MarkdownWidget, Offset, PathOrStr};
 use ratatui::style::Stylize;
 use ratatui::{prelude::*, widgets::*};
 use std::io;
@@ -17,14 +18,9 @@ use std::time::{Duration, Instant};
 /// App holds the state of the application
 struct App {
     question: String,
-    answer: String,
+    answer: Vec<PathOrStr>,
     answer_status: AnswerStatus,
     spent_time: Option<Duration>,
-
-    vertical_scroll_state: ScrollbarState,
-    horizontal_scroll_state: ScrollbarState,
-    vertical_scroll: usize,
-    horizontal_scroll: usize,
 }
 
 impl App {
@@ -32,10 +28,10 @@ impl App {
         self.answer_status = self.answer_status.flip();
     }
 
-    fn get_answer(&self) -> &str {
+    fn get_answer(&self) -> Option<&Vec<PathOrStr>> {
         match self.answer_status {
-            AnswerStatus::Show => &self.answer,
-            AnswerStatus::Hide => "",
+            AnswerStatus::Show => Some(&self.answer),
+            AnswerStatus::Hide => None,
         }
     }
 }
@@ -76,99 +72,106 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
     terminal: &mut Terminal<B>,
     mut spaced_repetition: T,
 ) -> Result<ExitCode> {
+    let mut offset = Offset { x: 0, y: 0 };
     let Some(mut app) = next(&mut spaced_repetition) else {
         return Ok(ExitCode::OutOfCard);
     };
 
     loop {
-        terminal.draw(|f| ui(f, &mut app))?;
+        terminal.draw(|f| ui(f, &mut app, &mut offset))?;
         let start = Instant::now();
 
-        if let Event::Key(key) = event::read()? {
-            match &app.answer_status {
-                AnswerStatus::Show => match key.code {
-                    KeyCode::Char('h') | KeyCode::Char('H') => {
-                        let spent_time = app.spent_time.unwrap();
-                        let q = if spent_time < Duration::from_secs(5) {
-                            2
-                        } else {
-                            1
-                        };
-                        spaced_repetition.update_and_dump(app.question.to_owned(), q)?;
+        loop {
+            if let Event::Key(key) = event::read()? {
+                match &app.answer_status {
+                    AnswerStatus::Show => match key.code {
+                        KeyCode::Char('h') | KeyCode::Char('H') => {
+                            let spent_time = app.spent_time.unwrap();
+                            let q = if spent_time < Duration::from_secs(5) {
+                                2
+                            } else {
+                                1
+                            };
+                            spaced_repetition.update_and_dump(app.question.to_owned(), q)?;
 
-                        let Some(new_app) = next(&mut spaced_repetition) else {
-                            return Ok(ExitCode::OutOfCard);
-                        };
-                        app = new_app
-                    }
-                    KeyCode::Char('g') | KeyCode::Char('G') => {
-                        let spent_time = app.spent_time.unwrap();
-                        let q = if spent_time < Duration::from_secs(5) {
-                            5
-                        } else if spent_time < Duration::from_secs(15) {
-                            4
-                        } else {
-                            3
-                        };
-                        spaced_repetition.update_and_dump(app.question.to_owned(), q)?;
-
-                        let Some(new_app) = next(&mut spaced_repetition) else {
-                            return Ok(ExitCode::OutOfCard);
-                        };
-                        app = new_app
-                    }
-                    KeyCode::Char('f') | KeyCode::Char('F') => {
-                        spaced_repetition.update_and_dump(app.question.to_owned(), 0)?;
-
-                        let Some(new_app) = next(&mut spaced_repetition) else {
-                            return Ok(ExitCode::OutOfCard);
-                        };
-                        app = new_app
-                    }
-                    KeyCode::Char(' ') => app.toggle(),
-
-                    KeyCode::Down => {
-                        app.vertical_scroll = app.vertical_scroll.saturating_add(1);
-                        app.vertical_scroll_state =
-                            app.vertical_scroll_state.position(app.vertical_scroll);
-                    }
-                    KeyCode::Up => {
-                        app.vertical_scroll = app.vertical_scroll.saturating_sub(1);
-                        app.vertical_scroll_state =
-                            app.vertical_scroll_state.position(app.vertical_scroll);
-                    }
-                    KeyCode::Left => {
-                        app.horizontal_scroll = app.horizontal_scroll.saturating_sub(1);
-                        app.horizontal_scroll_state =
-                            app.horizontal_scroll_state.position(app.horizontal_scroll);
-                    }
-                    KeyCode::Right => {
-                        app.horizontal_scroll = app.horizontal_scroll.saturating_add(1);
-                        app.horizontal_scroll_state =
-                            app.horizontal_scroll_state.position(app.horizontal_scroll);
-                    }
-
-                    KeyCode::Char('q') | KeyCode::Esc => return Ok(ExitCode::ManualExit),
-                    _ => {}
-                },
-                AnswerStatus::Hide => match key.code {
-                    KeyCode::Char(' ') => {
-                        let end = Instant::now();
-                        let duration = end - start;
-                        if app.spent_time.is_none() {
-                            app.spent_time = Some(duration);
+                            let Some(new_app) = next(&mut spaced_repetition) else {
+                                return Ok(ExitCode::OutOfCard);
+                            };
+                            app = new_app;
+                            offset = Offset { x: 0, y: 0 };
+                            break;
                         }
-                        app.toggle();
-                    }
-                    KeyCode::Char('q') | KeyCode::Esc => return Ok(ExitCode::ManualExit),
-                    _ => {}
-                },
+                        KeyCode::Char('g') | KeyCode::Char('G') => {
+                            let spent_time = app.spent_time.unwrap();
+                            let q = if spent_time < Duration::from_secs(5) {
+                                5
+                            } else if spent_time < Duration::from_secs(15) {
+                                4
+                            } else {
+                                3
+                            };
+                            spaced_repetition.update_and_dump(app.question.to_owned(), q)?;
+
+                            let Some(new_app) = next(&mut spaced_repetition) else {
+                                return Ok(ExitCode::OutOfCard);
+                            };
+                            app = new_app;
+                            break;
+                        }
+                        KeyCode::Char('f') | KeyCode::Char('F') => {
+                            spaced_repetition.update_and_dump(app.question.to_owned(), 0)?;
+
+                            let Some(new_app) = next(&mut spaced_repetition) else {
+                                return Ok(ExitCode::OutOfCard);
+                            };
+                            app = new_app;
+                            break;
+                        }
+                        KeyCode::Char(' ') => {
+                            app.toggle();
+                            break;
+                        }
+
+                        KeyCode::Down => {
+                            offset.y = offset.y.saturating_add(1);
+                            break;
+                        }
+                        KeyCode::Up => {
+                            offset.y = offset.y.saturating_sub(1);
+                            break;
+                        }
+                        KeyCode::Left => {
+                            offset.x = offset.x.saturating_sub(1);
+                            break;
+                        }
+                        KeyCode::Right => {
+                            offset.x = offset.x.saturating_add(1);
+                            break;
+                        }
+
+                        KeyCode::Char('q') | KeyCode::Esc => return Ok(ExitCode::ManualExit),
+                        _ => {}
+                    },
+                    AnswerStatus::Hide => match key.code {
+                        KeyCode::Char(' ') => {
+                            let end = Instant::now();
+                            let duration = end - start;
+                            if app.spent_time.is_none() {
+                                app.spent_time = Some(duration);
+                            }
+                            app.toggle();
+                            break;
+                        }
+                        KeyCode::Char('q') | KeyCode::Esc => return Ok(ExitCode::ManualExit),
+                        _ => {}
+                    },
+                }
             }
         }
     }
 }
 
-fn ui(f: &mut Frame, app: &mut App) {
+fn ui(f: &mut Frame, app: &mut App, offset: &mut Offset) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -183,30 +186,11 @@ fn ui(f: &mut Frame, app: &mut App) {
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(question, chunks[0]);
 
-    let answer = Paragraph::new(app.get_answer())
-        .alignment(Alignment::Left)
-        .block(Block::default().borders(Borders::ALL))
-        .scroll((app.vertical_scroll as u16, app.horizontal_scroll as u16));
-    f.render_widget(answer, chunks[1]);
-    f.render_stateful_widget(
-        Scrollbar::default()
-            .orientation(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(Some("↑"))
-            .end_symbol(Some("↓")),
-        chunks[1],
-        &mut app.vertical_scroll_state,
-    );
-    f.render_stateful_widget(
-        Scrollbar::default()
-            .orientation(ScrollbarOrientation::HorizontalBottom)
-            .thumb_symbol("🬋")
-            .end_symbol(None),
-        chunks[1].inner(&Margin {
-            vertical: 0,
-            horizontal: 1,
-        }),
-        &mut app.horizontal_scroll_state,
-    );
+    let v = Vec::new();
+    let answer = MarkdownWidget {
+        path_or_str: app.get_answer().unwrap_or(&v),
+    };
+    f.render_stateful_widget(answer, chunks[1], offset);
 
     let escape_keys = [("Q/Esc", "Quit")];
     let hide_keys = [("<Space>", "Show answer")];
@@ -253,17 +237,11 @@ where
         return None;
     };
     if let Ok((_, answer)) = query(&question) {
-        let answer = answer.trim();
-        let (height, width) = get_width_and_height(answer);
         Some(App {
             question,
-            answer: answer.to_owned(),
+            answer,
             answer_status: AnswerStatus::Hide,
             spent_time: None,
-            vertical_scroll_state: ScrollbarState::new(height),
-            horizontal_scroll_state: ScrollbarState::new(width),
-            vertical_scroll: 0,
-            horizontal_scroll: 0,
         })
     } else {
         spaced_repetition.remove(&question);

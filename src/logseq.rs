@@ -10,10 +10,12 @@ use pulldown_cmark_mdcat::Settings;
 use pulldown_cmark_mdcat::TerminalProgram;
 use pulldown_cmark_mdcat::TerminalSize;
 use pulldown_cmark_mdcat::Theme;
+use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
 use std::fs::File;
 use std::io::stdout;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::path::PathBuf;
 use syntect::parsing::SyntaxSet;
 use walkdir::DirEntry;
 use walkdir::WalkDir;
@@ -43,8 +45,9 @@ impl SearchAble for Logseq {
         }
     }
 
-    fn exact_lookup<'a>(&'a self, word: &str) -> Option<Entry<'a>> {
-        self.find(word)
+    fn exact_lookup<'a>(&'a self, word: &str) -> Option<PathOrStr> {
+        self.find_path(word)
+            .map(|x| PathOrStr::from_md_path(x.path().to_owned()))
     }
 
     fn fuzzy_lookup<'a>(&'a self, target_word: &str) -> Vec<Entry<'a>> {
