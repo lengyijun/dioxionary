@@ -17,6 +17,7 @@ pub mod theme;
 use crate::stardict::SearchAble;
 use anyhow::{anyhow, Context, Result};
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
+use dirs::home_dir;
 use itertools::Itertools;
 use prettytable::{Attr, Cell, Row, Table};
 use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
@@ -64,7 +65,14 @@ fn get_dicts_entries() -> Result<Vec<DirEntry>> {
 }
 
 fn get_dics() -> Vec<Box<dyn SearchAble>> {
-    let mut dicts: Vec<Box<dyn SearchAble>> = vec![Box::new(logseq::Logseq {})];
+    let mut dicts: Vec<Box<dyn SearchAble>> = vec![
+        Box::new(logseq::Logseq {
+            path: home_dir().unwrap().join("girl-logseq"),
+        }),
+        Box::new(logseq::Logseq {
+            path: home_dir().unwrap().join("dictionary-logseq"),
+        }),
+    ];
     if let Ok(ds) = get_dicts_entries() {
         for d in ds {
             if let Ok(x) = StarDict::new(d.path()) {

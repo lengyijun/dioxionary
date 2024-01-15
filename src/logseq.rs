@@ -20,7 +20,9 @@ use syntect::parsing::SyntaxSet;
 use walkdir::DirEntry;
 use walkdir::WalkDir;
 
-pub struct Logseq {}
+pub struct Logseq {
+    pub path: PathBuf,
+}
 
 impl SearchAble for Logseq {
     fn push_tty(&self, word: &str) -> anyhow::Result<()> {
@@ -72,7 +74,7 @@ impl Logseq {
 
     fn find_path<'a>(&'a self, word: &str) -> Option<DirEntry> {
         let word = word.to_lowercase();
-        let root = home_dir().unwrap().join("girl-logseq").join("pages");
+        let root = self.path.join("pages");
         'outer: for entry in WalkDir::new(root) {
             let Ok(entry) = entry else { continue };
             let path = entry.path();
