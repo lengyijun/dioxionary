@@ -9,9 +9,13 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use itertools::Itertools;
-use pulldown_cmark_mdcat_ratatui::markdown_widget::{MarkdownWidget, Offset, PathOrStr};
+use pulldown_cmark_mdcat_ratatui::bufferline::BufferLine;
+use pulldown_cmark_mdcat_ratatui::markdown_widget::{
+    FasterMarkdownWidget, MarkdownWidget, Offset, PathOrStr,
+};
 use ratatui::style::Stylize;
 use ratatui::{prelude::*, widgets::*};
+use std::cell::OnceCell;
 use std::io;
 
 /// App holds the state of the application
@@ -19,6 +23,7 @@ struct App {
     question: String,
     answer: Vec<PathOrStr>,
     answer_status: AnswerStatus,
+    cell: OnceCell<Vec<BufferLine>>,
 }
 
 impl App {
@@ -26,10 +31,23 @@ impl App {
         self.answer_status = self.answer_status.flip();
     }
 
-    fn get_answer(&self) -> Option<&Vec<PathOrStr>> {
+    fn get_answer(&self, area: Rect) -> FasterMarkdownWidget {
         match self.answer_status {
-            AnswerStatus::Show => Some(&self.answer),
-            AnswerStatus::Hide => None,
+            AnswerStatus::Show => {
+                let x = self.cell.get_or_init(|| {
+                    self.answer
+                        .iter()
+                        .map(|x| {
+                            let mut y = x.get_bufferlines(area);
+                            y.push(BufferLine::Line(Vec::new()));
+                            y
+                        })
+                        .flatten()
+                        .collect()
+                });
+                FasterMarkdownWidget(std::borrow::Cow::Borrowed(x))
+            }
+            AnswerStatus::Hide => FasterMarkdownWidget(std::borrow::Cow::Owned(Vec::new())),
         }
     }
 }
@@ -189,10 +207,7 @@ fn ui(f: &mut Frame, app: &mut App, offset: &mut Offset) {
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(question, chunks[0]);
 
-    let v = Vec::new();
-    let answer = MarkdownWidget {
-        path_or_str: app.get_answer().unwrap_or(&v),
-    };
+    let answer = app.get_answer(chunks[1]);
 
     f.render_stateful_widget(answer, chunks[1], offset);
 
@@ -245,6 +260,7 @@ where
             question,
             answer,
             answer_status: AnswerStatus::Hide,
+            cell: OnceCell::new(),
         })
     } else {
         spaced_repetition.remove(&question);
