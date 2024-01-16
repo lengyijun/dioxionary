@@ -31,10 +31,10 @@ impl App {
         self.answer_status = self.answer_status.flip();
     }
 
-    fn get_answer(&self, area: Rect) -> FasterMarkdownWidget {
+    fn render_answer(&self, f: &mut Frame, area: Rect, offset: &mut Offset) {
         match self.answer_status {
             AnswerStatus::Show => {
-                let x = self.cell.get_or_init(|| {
+                let t = self.cell.get_or_init(|| {
                     self.answer
                         .iter()
                         .map(|x| {
@@ -45,9 +45,12 @@ impl App {
                         .flatten()
                         .collect()
                 });
-                FasterMarkdownWidget(std::borrow::Cow::Borrowed(x))
+                f.render_stateful_widget(FasterMarkdownWidget { t }, area, offset);
             }
-            AnswerStatus::Hide => FasterMarkdownWidget(std::borrow::Cow::Owned(Vec::new())),
+            AnswerStatus::Hide => {
+                let w = FasterMarkdownWidget { t: Vec::new() };
+                f.render_stateful_widget(w, area, offset);
+            }
         }
     }
 }
@@ -207,9 +210,7 @@ fn ui(f: &mut Frame, app: &mut App, offset: &mut Offset) {
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(question, chunks[0]);
 
-    let answer = app.get_answer(chunks[1]);
-
-    f.render_stateful_widget(answer, chunks[1], offset);
+    app.render_answer(f, chunks[1], offset);
 
     let escape_keys = [("Q/Esc", "Quit")];
     let hide_keys = [("<Space>", "Show answer")];
