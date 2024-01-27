@@ -1,7 +1,7 @@
 //! History query and addition using [sqlite](https://sqlite.org/index.html).
 use anyhow::{Context, Result};
 
-use dirs::cache_dir;
+use dirs::data_dir;
 use prettytable::{Attr, Cell, Row, Table};
 use rusqlite::Connection;
 use std::fs::create_dir;
@@ -14,7 +14,7 @@ pub static ALLOWED_TYPES: [&str; 7] = ["CET4", "CET6", "TOEFL", "IELTS", "GMAT",
 
 /// Check and generate cache directory path.
 fn check_cache() -> Result<PathBuf> {
-    let mut path = cache_dir().with_context(|| "Couldn't find cache directory")?;
+    let mut path = data_dir().with_context(|| "Couldn't find cache directory")?;
     path.push("dioxionary");
     if !path.exists() {
         create_dir(&path).with_context(|| format!("Failed to create directory {:?}", path))?;
