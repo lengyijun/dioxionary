@@ -18,6 +18,16 @@ pub fn get_db() -> Result<Connection> {
     }
     path.push("dioxionary.db");
     let db = Connection::open(path)?;
+    db.execute(
+        "CREATE TABLE IF NOT EXISTS fsrs (
+        word TEXT PRIMARY KEY,
+        difficulty REAL NOT NULL,
+        stability REAL NOT NULL,
+        interval INTEGER NOT NULL,
+        last_reviewed TEXT NOT NULL
+        )",
+        (), // empty list of parameters.
+    )?;
     Ok(db)
 }
 

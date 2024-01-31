@@ -61,8 +61,7 @@ impl Default for Deck {
 
 impl SpacedRepetiton for Deck {
     fn next_to_review(&self) -> Result<Option<String>> {
-        let mut conn = history::get_db()?;
-        create_table_if_not(&mut conn)?;
+        let conn = history::get_db()?;
         let mut stmt =
             conn.prepare("SELECT word, stability, difficulty, interval, last_reviewed FROM fsrs")?;
         let person_iter = stmt.query_map([], |row| {
@@ -92,7 +91,6 @@ impl SpacedRepetiton for Deck {
 
     fn add_fresh_word(&mut self, word: String) -> Result<()> {
         let mut conn = history::get_db()?;
-        create_table_if_not(&mut conn)?;
         insert_if_not_exists(&mut conn, &word, Default::default())?;
         Ok(())
     }
@@ -100,7 +98,6 @@ impl SpacedRepetiton for Deck {
     /// requires 1 <= q <= 4
     fn update(&mut self, question: String, q: u8) -> Result<()> {
         let mut conn = history::get_db()?;
-        create_table_if_not(&mut conn)?;
         let old_state = get_word(&mut conn, &question)?;
         let next_states = self.fsrs.next_states(
             Some(old_state.to_memory_state()),
@@ -128,8 +125,7 @@ impl SpacedRepetiton for Deck {
     }
 
     fn remove(&mut self, question: &str) -> Result<()> {
-        let mut conn = history::get_db()?;
-        create_table_if_not(&mut conn)?;
+        let conn = history::get_db()?;
         conn.execute("DELETE FROM fsrs WHERE word = ?", [question])?;
         Ok(())
     }
@@ -147,20 +143,6 @@ fn insert(conn: &mut Connection, word: &str, sm: MemoryStateWrapper) -> Result<(
     conn.execute(
         "INSERT OR REPLACE INTO fsrs (word, stability, difficulty, interval, last_reviewed) VALUES (?1, ?2, ?3, ?4, ?5)",
         (word, sm.stability, sm.difficulty, sm.interval, sm.last_reviewed.to_string()),
-    )?;
-    Ok(())
-}
-
-fn create_table_if_not(conn: &mut Connection) -> Result<()> {
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS fsrs (
-        word TEXT PRIMARY KEY,
-        difficulty REAL NOT NULL,
-        stability REAL NOT NULL,
-        interval INTEGER NOT NULL,
-        last_reviewed TEXT NOT NULL
-        )",
-        (), // empty list of parameters.
     )?;
     Ok(())
 }
