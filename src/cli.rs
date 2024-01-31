@@ -4,7 +4,7 @@ use clap_complete::Shell;
 
 /// Dioxionary command line parameters.
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None, bin_name = "dioxionary", after_help =
+#[command(author, about, long_about = None, bin_name = "dioxionary", after_help =
 "Examples:
   When no subcommand is specified, the default is 'lookup'.
   you can list all records:
@@ -52,6 +52,9 @@ pub struct Cli {
 
     /// The word being looked up.
     pub word: Option<Vec<String>>,
+
+    #[arg(long, default_value_t = false)]
+    pub version: bool,
 }
 
 /// Dioxionary subcommands.

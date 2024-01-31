@@ -7,10 +7,18 @@ use dioxionary::{
     dict::is_enword,
     history, list_dicts, query, query_and_push_tty, query_fuzzy, repl, QueryStatus,
 };
+use shadow_rs::shadow;
 use std::env;
+
+shadow!(build);
 
 fn main() -> Result<()> {
     let cli: Cli = Cli::parse();
+
+    if cli.version {
+        println!("{}", build::VERSION); //print version const
+        return Ok(());
+    }
 
     if let Some(shell) = cli.completions {
         let bin_name = env::args().next().expect("impossible");
