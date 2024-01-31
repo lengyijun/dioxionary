@@ -37,7 +37,7 @@ fn main() -> Result<()> {
                 let word = w.word;
                 let path = &w.local;
                 let read_aloud = w.read_aloud;
-                lookup(word, online, local_first, exact, path, read_aloud)
+                lookup(word, online, local_first, exact, path, read_aloud, true)
             }
             Action::Dicts => list_dicts(),
             Action::Review => {
@@ -46,13 +46,15 @@ fn main() -> Result<()> {
             }
         }
     } else {
-        let online = cli.online;
-        let local_first = cli.local_first;
-        let exact = cli.exact_search;
-        let word = cli.word;
-        let path = &cli.local;
-        let read_aloud = cli.read_aloud;
-        lookup(word, online, local_first, exact, path, read_aloud)
+        lookup(
+            cli.word,
+            cli.online,
+            cli.local_first,
+            cli.exact_search,
+            &cli.local,
+            cli.read_aloud,
+            !cli.non_interactive,
+        )
     }
 }
 
@@ -63,6 +65,7 @@ fn lookup(
     exact: bool,
     path: &Option<String>,
     read_aloud: bool,
+    interactive: bool,
 ) -> Result<()> {
     if let Some(word_list) = words {
         for word in word_list {
@@ -71,7 +74,7 @@ fn lookup(
             if found != QueryStatus::NotFound && is_enword(word) {
                 history::add_history(word.to_owned())?;
             }
-            if found != QueryStatus::FoundLocally {
+            if found != QueryStatus::FoundLocally && interactive {
                 let _ = query_fuzzy(word);
             }
         }
