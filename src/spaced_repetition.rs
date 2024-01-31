@@ -1,11 +1,8 @@
 use anyhow::Result;
 
-pub trait SpacedRepetiton: Sized {
+pub trait SpacedRepetiton: Sized + Default {
     /// find next reviewable word
     fn next_to_review(&self) -> Result<Option<String>>;
-
-    /// load from disk or default
-    fn load() -> Self;
 
     fn add_fresh_word(&mut self, w: String) -> Result<()>;
 

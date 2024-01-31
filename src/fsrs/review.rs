@@ -63,7 +63,7 @@ pub fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let res = run_app(&mut terminal, crate::fsrs::Deck::load());
+    let res = run_app(&mut terminal, crate::fsrs::Deck::default());
 
     // restore terminal
     disable_raw_mode()?;

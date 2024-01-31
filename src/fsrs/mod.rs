@@ -49,21 +49,23 @@ impl MemoryStateWrapper {
 #[derive(Debug)]
 pub struct Deck {
     fsrs: LazyCell<FSRS>,
+    conn: LazyCell<Connection>,
 }
 
 impl Default for Deck {
     fn default() -> Self {
         Self {
             fsrs: LazyCell::new(|| FSRS::new(Some(&DEFAULT_WEIGHTS)).unwrap()),
+            conn: LazyCell::new(|| history::get_db().unwrap()),
         }
     }
 }
 
 impl SpacedRepetiton for Deck {
     fn next_to_review(&self) -> Result<Option<String>> {
-        let conn = history::get_db()?;
-        let mut stmt =
-            conn.prepare("SELECT word, stability, difficulty, interval, last_reviewed FROM fsrs")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT word, stability, difficulty, interval, last_reviewed FROM fsrs")?;
         let person_iter = stmt.query_map([], |row| {
             let time: String = row.get(4)?;
             let sm = MemoryStateWrapper {
@@ -83,22 +85,14 @@ impl SpacedRepetiton for Deck {
         Ok(None)
     }
 
-    fn load() -> Self {
-        Self {
-            fsrs: LazyCell::new(|| FSRS::new(Some(&DEFAULT_WEIGHTS)).unwrap()),
-        }
-    }
-
     fn add_fresh_word(&mut self, word: String) -> Result<()> {
-        let mut conn = history::get_db()?;
-        insert_if_not_exists(&mut conn, &word, Default::default())?;
+        insert_if_not_exists(&self.conn, &word, Default::default())?;
         Ok(())
     }
 
     /// requires 1 <= q <= 4
     fn update(&mut self, question: String, q: u8) -> Result<()> {
-        let mut conn = history::get_db()?;
-        let old_state = get_word(&mut conn, &question)?;
+        let old_state = get_word(&self.conn, &question)?;
         let next_states = self.fsrs.next_states(
             Some(old_state.to_memory_state()),
             0.9,
@@ -120,18 +114,18 @@ impl SpacedRepetiton for Deck {
             interval: new_memory_state.interval,
             last_reviewed: Local::now(),
         };
-        insert(&mut conn, &question, x)?;
+        insert(&self.conn, &question, x)?;
         Ok(())
     }
 
     fn remove(&mut self, question: &str) -> Result<()> {
-        let conn = history::get_db()?;
-        conn.execute("DELETE FROM fsrs WHERE word = ?", [question])?;
+        self.conn
+            .execute("DELETE FROM fsrs WHERE word = ?", [question])?;
         Ok(())
     }
 }
 
-fn insert_if_not_exists(conn: &mut Connection, word: &str, sm: MemoryStateWrapper) -> Result<()> {
+fn insert_if_not_exists(conn: &Connection, word: &str, sm: MemoryStateWrapper) -> Result<()> {
     conn.execute(
         "INSERT OR IGNORE INTO fsrs (word, stability, difficulty, interval, last_reviewed) VALUES (?1, ?2, ?3, ?4, ?5)",
         (word, sm.stability, sm.difficulty, sm.interval, sm.last_reviewed.to_string()),
@@ -139,7 +133,7 @@ fn insert_if_not_exists(conn: &mut Connection, word: &str, sm: MemoryStateWrappe
     Ok(())
 }
 
-fn insert(conn: &mut Connection, word: &str, sm: MemoryStateWrapper) -> Result<()> {
+fn insert(conn: &Connection, word: &str, sm: MemoryStateWrapper) -> Result<()> {
     conn.execute(
         "INSERT OR REPLACE INTO fsrs (word, stability, difficulty, interval, last_reviewed) VALUES (?1, ?2, ?3, ?4, ?5)",
         (word, sm.stability, sm.difficulty, sm.interval, sm.last_reviewed.to_string()),
@@ -147,7 +141,7 @@ fn insert(conn: &mut Connection, word: &str, sm: MemoryStateWrapper) -> Result<(
     Ok(())
 }
 
-fn get_word(conn: &mut Connection, word: &str) -> Result<MemoryStateWrapper> {
+fn get_word(conn: &Connection, word: &str) -> Result<MemoryStateWrapper> {
     let sm = conn.query_row(
         "SELECT stability, difficulty, interval, last_reviewed FROM fsrs WHERE word = ?",
         [word],
