@@ -9,7 +9,6 @@ pub mod fsrs;
 pub mod history;
 pub mod logseq;
 pub mod review_helper;
-pub mod sm2;
 pub mod spaced_repetition;
 pub mod stardict;
 pub mod theme;

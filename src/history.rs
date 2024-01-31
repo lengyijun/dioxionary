@@ -1,31 +1,31 @@
 //! History query and addition using [sqlite](https://sqlite.org/index.html).
+use crate::spaced_repetition::SpacedRepetiton;
 use anyhow::{Context, Result};
-
 use dirs::data_dir;
 use prettytable::{Attr, Cell, Row, Table};
 use rusqlite::Connection;
 use std::fs::create_dir;
-use std::path::PathBuf;
-
-use crate::spaced_repetition::SpacedRepetiton;
 
 /// Allowed diffculty level types of a word.
 pub static ALLOWED_TYPES: [&str; 7] = ["CET4", "CET6", "TOEFL", "IELTS", "GMAT", "GRE", "SAT"];
 
 /// Check and generate cache directory path.
-fn check_cache() -> Result<PathBuf> {
-    let mut path = data_dir().with_context(|| "Couldn't find cache directory")?;
+pub fn get_db() -> Result<Connection> {
+    let mut path = data_dir().with_context(|| "Couldn't find data directory")?;
     path.push("dioxionary");
     if !path.exists() {
         create_dir(&path).with_context(|| format!("Failed to create directory {:?}", path))?;
     }
     path.push("dioxionary.db");
-    Ok(path)
+    let db = Connection::open(path)?;
+    Ok(db)
 }
 
 /// Add a looked up word to history.
 pub fn add_history(word: String) -> Result<()> {
-    crate::fsrs::Deck::add_history(word)
+    let mut d = crate::fsrs::Deck::default();
+    d.add_fresh_word(word)?;
+    Ok(())
     // crate::sm2::Deck::add_history(word)
 }
 
@@ -40,8 +40,6 @@ pub fn add_history(word: String) -> Result<()> {
 /// +------+------+-------+-------+------+-----+-----+
 ///
 pub fn list_history(type_: Option<String>, sort: bool, table: bool, column: usize) -> Result<()> {
-    let path = check_cache()?;
-
     let mut stmt = "SELECT WORD, DATE FROM HISTORY".to_string();
 
     if let Some(type_) = type_ {
@@ -50,7 +48,7 @@ pub fn list_history(type_: Option<String>, sort: bool, table: bool, column: usiz
         }
     }
 
-    let conn = Connection::open(path)?;
+    let conn = get_db()?;
 
     let mut stmt = conn.prepare(&stmt)?;
     let word_iter = stmt.query_map([], |row| row.get(0) as rusqlite::Result<String>)?;
@@ -78,9 +76,7 @@ pub fn list_history(type_: Option<String>, sort: bool, table: bool, column: usiz
 
 /// Count the history.
 pub fn count_history() -> Result<()> {
-    let path = check_cache()?;
-
-    let conn = Connection::open(path)?;
+    let conn = get_db()?;
 
     let header: Row = ALLOWED_TYPES
         .into_iter()

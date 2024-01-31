@@ -104,7 +104,7 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
                 match &app.answer_status {
                     AnswerStatus::Show => match key.code {
                         KeyCode::Char('a') | KeyCode::Char('A') => {
-                            spaced_repetition.update_and_dump(app.question.to_owned(), 1)?;
+                            spaced_repetition.update(app.question.to_owned(), 1)?;
 
                             let Some(new_app) = next(&mut spaced_repetition) else {
                                 return Ok(ExitCode::OutOfCard);
@@ -114,7 +114,7 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
                             break;
                         }
                         KeyCode::Char('h') | KeyCode::Char('H') => {
-                            spaced_repetition.update_and_dump(app.question.to_owned(), 2)?;
+                            spaced_repetition.update(app.question.to_owned(), 2)?;
 
                             let Some(new_app) = next(&mut spaced_repetition) else {
                                 return Ok(ExitCode::OutOfCard);
@@ -123,7 +123,7 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
                             break;
                         }
                         KeyCode::Char('g') | KeyCode::Char('G') => {
-                            spaced_repetition.update_and_dump(app.question.to_owned(), 3)?;
+                            spaced_repetition.update(app.question.to_owned(), 3)?;
 
                             let Some(new_app) = next(&mut spaced_repetition) else {
                                 return Ok(ExitCode::OutOfCard);
@@ -132,7 +132,7 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
                             break;
                         }
                         KeyCode::Char('e') | KeyCode::Char('E') => {
-                            spaced_repetition.update_and_dump(app.question.to_owned(), 4)?;
+                            spaced_repetition.update(app.question.to_owned(), 4)?;
 
                             let Some(new_app) = next(&mut spaced_repetition) else {
                                 return Ok(ExitCode::OutOfCard);
@@ -253,7 +253,7 @@ fn next<T>(spaced_repetition: &mut T) -> Option<App>
 where
     T: SpacedRepetiton,
 {
-    let Some(question) = spaced_repetition.next_to_review() else {
+    let Ok(Some(question)) = spaced_repetition.next_to_review() else {
         return None;
     };
     if let Ok((_, answer)) = query(&question) {
@@ -264,7 +264,7 @@ where
             cell: OnceCell::new(),
         })
     } else {
-        spaced_repetition.remove(&question);
+        spaced_repetition.remove(&question).unwrap();
         next(spaced_repetition)
     }
 }
