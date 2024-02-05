@@ -63,7 +63,9 @@ pub fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let res = run_app(&mut terminal, crate::fsrs::Deck::default());
+    let mut history: Vec<String> = Vec::new();
+
+    let res = run_app(&mut terminal, crate::fsrs::Deck::default(), &mut history);
 
     // restore terminal
     disable_raw_mode()?;
@@ -75,8 +77,11 @@ pub fn main() -> Result<()> {
     terminal.show_cursor()?;
 
     match res {
-        Ok(ExitCode::ManualExit) => {}
+        Ok(ExitCode::ManualExit) => {
+            println!("{:?}", history);
+        }
         Ok(ExitCode::OutOfCard) => {
+            println!("{:?}", history);
             println!("All cards reviewed");
         }
         Err(err) => {
@@ -90,6 +95,7 @@ pub fn main() -> Result<()> {
 fn run_app<B: Backend, T: SpacedRepetiton>(
     terminal: &mut Terminal<B>,
     mut spaced_repetition: T,
+    history: &mut Vec<String>,
 ) -> Result<ExitCode> {
     let mut offset = Offset { x: 0, y: 0 };
     let Some(mut app) = next(&mut spaced_repetition) else {
@@ -97,6 +103,12 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
     };
 
     loop {
+        if let Some(last_reviewed) = history.last()
+            && last_reviewed == &app.question
+        {
+        } else {
+            history.push(app.question.clone());
+        }
         terminal.draw(|f| ui(f, &mut app, &mut offset))?;
 
         loop {
