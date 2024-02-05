@@ -15,6 +15,10 @@ use clap_complete::Shell;
     dioxionary count
   you can list all dictionaries:
     dioxionary dicts
+  you can review like anki:
+    dioxionary review
+
+  https://github.com/lengyijun/dioxionary/tree/logseq
 "
 )]
 pub struct Cli {
