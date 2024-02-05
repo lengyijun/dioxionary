@@ -227,38 +227,33 @@ fn ui(f: &mut Frame, app: &mut App, offset: &mut Offset) {
     let escape_keys = [("Q/Esc", "Quit")];
     let hide_keys = [("<Space>", "Show answer")];
     let show_keys = [("a", "Again"), ("h", "Hard"), ("g", "Good"), ("e", "Easy")];
+    let help_keys = [("j/k", "Up/Down"), ("Home/End", "Top/Bottom")];
 
     let keys: &[(&str, &str)] = match app.answer_status {
         AnswerStatus::Show => &show_keys,
         AnswerStatus::Hide => &hide_keys,
     };
 
-    let spans = escape_keys
-        .iter()
-        .flat_map(|(key, desc)| {
-            let key = Span::styled(format!(" {key} "), THEME.key_binding.key);
-            let desc = Span::styled(format!(" {desc} "), THEME.key_binding.description);
-            [key, desc]
-        })
-        .collect_vec();
+    let spans = keys2span(&escape_keys);
     let buttons = Paragraph::new(Line::from(spans))
         .alignment(Alignment::Right)
         .fg(Color::Indexed(236))
         .bg(Color::Indexed(232));
     f.render_widget(buttons, chunks[2]);
 
-    let spans = keys
-        .iter()
-        .flat_map(|(key, desc)| {
-            let key = Span::styled(format!(" {key} "), THEME.key_binding.key);
-            let desc = Span::styled(format!(" {desc} "), THEME.key_binding.description);
-            [key, desc]
-        })
-        .collect_vec();
+    let spans = keys2span(keys);
     let buttons = Paragraph::new(Line::from(spans))
         .alignment(Alignment::Center)
         .fg(Color::Indexed(236));
     f.render_widget(buttons, chunks[2]);
+
+    if app.answer_status == AnswerStatus::Show {
+        let spans = keys2span(&help_keys);
+        let buttons = Paragraph::new(Line::from(spans))
+            .alignment(Alignment::Left)
+            .fg(Color::Indexed(236));
+        f.render_widget(buttons, chunks[2]);
+    }
 }
 
 fn next<T>(spaced_repetition: &mut T) -> Option<App>
@@ -279,4 +274,14 @@ where
         spaced_repetition.remove(&question).unwrap();
         next(spaced_repetition)
     }
+}
+
+fn keys2span<'a>(keys: &'a [(&str, &str)]) -> Vec<Span<'a>> {
+    keys.iter()
+        .flat_map(|(key, desc)| {
+            let key = Span::styled(format!(" {key} "), THEME.key_binding.key);
+            let desc = Span::styled(format!(" {desc} "), THEME.key_binding.description);
+            [key, desc]
+        })
+        .collect_vec()
 }
