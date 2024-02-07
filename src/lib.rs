@@ -117,8 +117,9 @@ pub fn query(word: &str) -> Result<(QueryStatus, Vec<PathOrStr>)> {
     };
 
     if found == QueryStatus::NotFound {
-        if let Ok(word_item) = dict::WordItem::lookup_online(word) {
-            v.push(PathOrStr::NormalStr(word_item.to_string()));
+        let exact_query = ExactQuery::new(word.to_owned()).unwrap();
+        if let Ok(single_query) = QueryYoudict::new().acquire(&exact_query) {
+            v.push(PathOrStr::NormalStr(single_query.to_string()));
             found = QueryStatus::FoundOnline;
         }
     }
