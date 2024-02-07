@@ -65,7 +65,7 @@ impl SpacedRepetiton for Deck {
     fn next_to_review(&self) -> Result<Option<String>> {
         let mut stmt = self
             .conn
-            .prepare("SELECT word, stability, difficulty, interval, last_reviewed FROM fsrs")?;
+            .prepare("SELECT word, stability, difficulty, interval, last_reviewed FROM fsrs ORDER BY RANDOM()")?;
         let person_iter = stmt.query_map([], |row| {
             let time: String = row.get(4)?;
             let sm = MemoryStateWrapper {
