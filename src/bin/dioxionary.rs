@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::CommandFactory;
 use dioxionary::{
     cli::{Action, Cli, Parser},
-    dict::is_enword,
+    dict::{self, is_enword},
     history, list_dicts, query, query_and_push_tty, query_fuzzy, repl, QueryStatus,
 };
 use shadow_rs::shadow;
@@ -17,6 +17,17 @@ fn main() -> Result<()> {
 
     if cli.version {
         println!("{}", build::VERSION); //print version const
+        return Ok(());
+    }
+
+    if cli.online {
+        if let Some(words) = &cli.word {
+            for word in words {
+                if let Ok(word_item) = dict::WordItem::lookup_online(word) {
+                    println!("{}\n\n", &word_item.to_string());
+                }
+            }
+        }
         return Ok(());
     }
 
