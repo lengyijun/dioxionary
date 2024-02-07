@@ -1,6 +1,9 @@
 //! StarDict in Rust!
 //! Use offline or online dictionary to look up words and memorize words in the terminal!
 use anyhow::Result;
+use charcoal_dict::{
+    app::config::Normal, word::QueryYoudict, Acquire, ExactQuery, PPrint, SingleEntry,
+};
 use clap::CommandFactory;
 use dioxionary::{
     cli::{Action, Cli, Parser},
@@ -8,11 +11,12 @@ use dioxionary::{
     history, list_dicts, query, query_and_push_tty, query_fuzzy, repl, QueryStatus,
 };
 use shadow_rs::shadow;
-use std::env;
+use std::{env, path::PathBuf};
 
 shadow!(build);
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli: Cli = Cli::parse();
 
     if cli.version {
@@ -23,8 +27,21 @@ fn main() -> Result<()> {
     if cli.online {
         if let Some(words) = &cli.word {
             for word in words {
-                if let Ok(word_item) = dict::WordItem::lookup_online(word) {
-                    println!("{}\n\n", &word_item.to_string());
+                let exact_query = ExactQuery::new(word.clone()).unwrap();
+                if let Ok(single_query) = QueryYoudict::new().acquire(&exact_query) {
+                    single_query.pprint(
+                        &exact_query,
+                        &charcoal_dict::Config {
+                            path: PathBuf::from("/"),
+                            main_mode: charcoal_dict::app::config::MainMode::Normal,
+                            speak: false,
+                            normal: Normal {
+                                with_pronunciation: false,
+                                with_variants: true,
+                                with_sentence: true,
+                            },
+                        },
+                    );
                 }
             }
         }

@@ -15,6 +15,7 @@ pub mod theme;
 
 use crate::stardict::SearchAble;
 use anyhow::{anyhow, Context, Result};
+use charcoal_dict::{app::config::Normal, word::QueryYoudict, Acquire, ExactQuery, PPrint};
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
 use dirs::home_dir;
 use itertools::Itertools;
@@ -22,7 +23,7 @@ use prettytable::{Attr, Cell, Row, Table};
 use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
 use rustyline::error::ReadlineError;
 use stardict::{EntryWrapper, StarDict};
-use std::fs::DirEntry;
+use std::{fs::DirEntry, path::PathBuf};
 
 /// Get the entries of the stardicts.
 fn get_dicts_entries() -> Result<Vec<DirEntry>> {
@@ -144,8 +145,21 @@ pub fn query_and_push_tty(word: &str) -> QueryStatus {
     }
 
     if found == QueryStatus::NotFound {
-        if let Ok(word_item) = dict::WordItem::lookup_online(word) {
-            println!("{}\n\n", &word_item.to_string());
+        let exact_query = ExactQuery::new(word.to_owned()).unwrap();
+        if let Ok(single_query) = QueryYoudict::new().acquire(&exact_query) {
+            single_query.pprint(
+                &exact_query,
+                &charcoal_dict::Config {
+                    path: PathBuf::from("/"),
+                    main_mode: charcoal_dict::app::config::MainMode::Normal,
+                    speak: false,
+                    normal: Normal {
+                        with_pronunciation: false,
+                        with_variants: true,
+                        with_sentence: true,
+                    },
+                },
+            );
             found = QueryStatus::FoundOnline;
         }
     }

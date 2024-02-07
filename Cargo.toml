@@ -41,6 +41,7 @@ syntect = "5.1.0"
 # pulldown-cmark-mdcat-ratatui = { path = "../mdcat-ratatui/pulldown-cmark-mdcat" , package = "pulldown-cmark-mdcat" }
 pulldown-cmark-mdcat-ratatui = { git = "https://github.com/lengyijun/mdcat-ratatui" , branch = "ratatui", package = "pulldown-cmark-mdcat" }
 shadow-rs = "0"
+charcoal-dict = {git = "https://github.com/lengyijun/charcoal", branch = "fix-7" }
 
 [dependencies.fsrs]
 git = "https://github.com/open-spaced-repetition/fsrs-rs.git"
