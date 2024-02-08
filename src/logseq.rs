@@ -68,7 +68,11 @@ impl Logseq {
     fn find<'a>(&'a self, word: &str) -> Option<Entry<'a>> {
         self.find_path(word).map(|dir_entry| Entry {
             word: word.to_string(),
-            trans: std::borrow::Cow::Owned(read_file_to_string(dir_entry.path())),
+            trans: std::borrow::Cow::Owned(format!(
+                "{:?}\n{}",
+                dir_entry.file_name(),
+                read_file_to_string(dir_entry.path())
+            )),
         })
     }
 
