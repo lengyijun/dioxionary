@@ -15,11 +15,11 @@ use std::str::FromStr;
 pub mod review;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct MemoryStateWrapper {
-    stability: f32,
-    difficulty: f32,
-    interval: u32,
-    last_reviewed: DateTime<Local>,
+pub struct MemoryStateWrapper {
+    pub stability: f32,
+    pub difficulty: f32,
+    pub interval: u32,
+    pub last_reviewed: DateTime<Local>,
 }
 
 impl Default for MemoryStateWrapper {
@@ -34,7 +34,7 @@ impl Default for MemoryStateWrapper {
 }
 
 impl MemoryStateWrapper {
-    fn next_review_time(&self) -> DateTime<Local> {
+    pub fn next_review_time(&self) -> DateTime<Local> {
         self.last_reviewed + Duration::days(self.interval.into())
     }
 
