@@ -72,6 +72,9 @@ fn get_dics() -> Vec<Box<dyn SearchAble>> {
         Box::new(logseq::Logseq {
             path: home_dir().unwrap().join("dictionary-logseq"),
         }),
+        Box::new(logseq::Logseq {
+            path: home_dir().unwrap().join("logseq-repo"),
+        }),
     ];
     if let Ok(ds) = get_dicts_entries() {
         for d in ds {
