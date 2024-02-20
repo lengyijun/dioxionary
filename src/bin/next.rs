@@ -2,7 +2,6 @@
 
 use anyhow::{Context, Result};
 use chrono::DateTime;
-use chrono::Duration;
 use chrono::Local;
 use clap::Parser;
 use dioxionary::fsrs::Deck;
@@ -79,17 +78,17 @@ fn foo() -> Result<String> {
             interval: row.get(3)?,
             last_reviewed: DateTime::<Local>::from_str(&time).unwrap(),
         };
-        let word = row.get(0)?;
-        Ok((word, sm.next_review_time()))
+        let word: String = row.get(0)?;
+        Ok((word.to_lowercase(), sm.next_review_time()))
     })?;
     let mut v: Vec<(String, _)> = person_iter.flatten().collect();
     v.sort_by(|(_, a), (_, b)| a.cmp(b));
 
     for (w, _) in v {
-        let Some(c) = w.chars().next() else { continue };
-        let Some(c) = c.to_lowercase().next() else {
+        if w.contains(' ') {
             continue;
         };
+        let Some(c) = w.chars().next() else { continue };
         if allowed_prefix.contains(&c) {
             return Ok(w);
         }
