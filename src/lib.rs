@@ -220,15 +220,17 @@ pub fn repl(
         let readline = rl.readline(">> ");
         match readline {
             Ok(word) => {
-                let _ = rl.add_history_entry(&word);
-                match query(&word) {
-                    Ok((_, s)) => {
-                        /*
-                        println!("{s}");
-                         */
-                    }
-                    Err(e) => {
-                        eprintln!("{:?}", e);
+                let word = word.trim();
+                if !word.is_empty() {
+                    let _ = rl.add_history_entry(word);
+                    match query(&word) {
+                        Ok((_, s)) => {
+                            let s = s.iter().map(PathOrStr::get_str).join("\n\n");
+                            println!("{s}");
+                        }
+                        Err(e) => {
+                            eprintln!("{:?}", e);
+                        }
                     }
                 }
             }
