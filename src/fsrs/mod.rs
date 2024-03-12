@@ -35,7 +35,7 @@ impl Default for MemoryStateWrapper {
 
 impl MemoryStateWrapper {
     pub fn next_review_time(&self) -> DateTime<Local> {
-        self.last_reviewed + Duration::days(self.interval.into())
+        self.last_reviewed + Duration::try_days(self.interval.into()).unwrap()
     }
 
     fn to_memory_state(&self) -> MemoryState {
