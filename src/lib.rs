@@ -13,6 +13,7 @@ pub mod spaced_repetition;
 pub mod stardict;
 pub mod theme;
 
+use crate::dict::is_enword;
 use crate::stardict::SearchAble;
 use anyhow::{anyhow, Context, Result};
 use charcoal_dict::{app::config::Normal, word::QueryYoudict, Acquire, ExactQuery, PPrint};
@@ -224,9 +225,12 @@ pub fn repl(
                 if !word.is_empty() {
                     let _ = rl.add_history_entry(word);
                     match query(&word) {
-                        Ok((_, s)) => {
+                        Ok((found, s)) => {
                             let s = s.iter().map(PathOrStr::get_str).join("\n\n");
                             println!("{s}");
+                            if found != QueryStatus::NotFound && is_enword(word) {
+                                history::add_history(word.to_owned())?;
+                            }
                         }
                         Err(e) => {
                             eprintln!("{:?}", e);
