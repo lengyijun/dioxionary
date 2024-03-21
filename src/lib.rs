@@ -218,7 +218,7 @@ pub fn repl(
 ) -> Result<()> {
     let mut rl = rustyline::DefaultEditor::new().with_context(|| "Failed to read lines")?;
     loop {
-        let readline = rl.readline(">> ");
+        let readline = rl.readline("\x1b[34m>> \x1b[0m");
         match readline {
             Ok(word) => {
                 let word = word.trim();
