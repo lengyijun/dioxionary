@@ -1,11 +1,7 @@
 use crate::stardict::Entry;
 use crate::stardict::NotFoundError;
 use crate::stardict::SearchAble;
-use crossterm::terminal;
-use dirs::home_dir;
-use pulldown_cmark_mdcat::resources::{
-    DispatchingResourceHandler, FileResourceHandler, ResourceUrlHandler,
-};
+use pulldown_cmark_mdcat::resources::FileResourceHandler;
 use pulldown_cmark_mdcat::Settings;
 use pulldown_cmark_mdcat::TerminalProgram;
 use pulldown_cmark_mdcat::TerminalSize;

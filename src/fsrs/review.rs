@@ -1,4 +1,4 @@
-use crate::review_helper::{get_width_and_height, ExitCode};
+use crate::review_helper::ExitCode;
 use crate::spaced_repetition::SpacedRepetiton;
 use crate::theme::THEME;
 use crate::{query, review_helper::AnswerStatus};
@@ -10,10 +10,7 @@ use crossterm::{
 };
 use itertools::Itertools;
 use pulldown_cmark_mdcat_ratatui::bufferline::BufferLine;
-use pulldown_cmark_mdcat_ratatui::markdown_widget::{
-    FasterMarkdownWidget, MarkdownWidget, Offset, PathOrStr,
-};
-use ratatui::style::Stylize;
+use pulldown_cmark_mdcat_ratatui::markdown_widget::{FasterMarkdownWidget, Offset, PathOrStr};
 use ratatui::{prelude::*, widgets::*};
 use std::cell::OnceCell;
 use std::io;

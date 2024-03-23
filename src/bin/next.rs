@@ -1,6 +1,6 @@
 #![feature(let_chains)]
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::DateTime;
 use chrono::Local;
 use clap::Parser;
