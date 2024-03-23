@@ -238,7 +238,10 @@ pub fn repl(
                     }
                 }
             }
-            Err(ReadlineError::Interrupted) => break Ok(()),
+            Err(ReadlineError::Interrupted) => {
+                // clear input when `ctrl+c`
+                continue;
+            }
             Err(ReadlineError::Eof) => break Ok(()),
             _ => break Err(anyhow!("Failed to read lines")),
         }
