@@ -23,7 +23,12 @@ use itertools::Itertools;
 use prettytable::{Attr, Cell, Row, Table};
 use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
 use rustyline::error::ReadlineError;
+use rustyline::highlight::Highlighter;
+use rustyline::hint::HistoryHinter;
+use rustyline::history::DefaultHistory;
+use rustyline::{Completer, Helper, Hinter, Validator};
 use stardict::{EntryWrapper, StarDict};
+use std::borrow::Cow::{self, Borrowed, Owned};
 use std::{fs::DirEntry, path::PathBuf};
 
 /// Get the entries of the stardicts.
@@ -208,6 +213,27 @@ pub fn query_fuzzy(word: &str) -> Result<()> {
     Ok(())
 }
 
+#[derive(Completer, Helper, Hinter, Validator)]
+struct MyHelper(#[rustyline(Hinter)] HistoryHinter);
+
+impl Highlighter for MyHelper {
+    fn highlight_prompt<'b, 's: 'b, 'p: 'b>(
+        &'s self,
+        prompt: &'p str,
+        default: bool,
+    ) -> Cow<'b, str> {
+        if default {
+            Owned(format!("\x1b[1;32m{prompt}\x1b[m"))
+        } else {
+            Borrowed(prompt)
+        }
+    }
+
+    fn highlight_hint<'h>(&self, hint: &'h str) -> Cow<'h, str> {
+        Owned(format!("\x1b[1m{hint}\x1b[m"))
+    }
+}
+
 /// Look up a word with many flags interactively using [query].
 pub fn repl(
     _online: bool,
@@ -216,7 +242,8 @@ pub fn repl(
     _path: &Option<String>,
     _read_aloud: bool,
 ) -> Result<()> {
-    let mut rl = rustyline::DefaultEditor::new().with_context(|| "Failed to read lines")?;
+    let mut rl = rustyline::Editor::<MyHelper, DefaultHistory>::new()?;
+    rl.set_helper(Some(MyHelper(HistoryHinter::new())));
     loop {
         let readline = rl.readline("\x1b[34m>> \x1b[0m");
         match readline {
