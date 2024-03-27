@@ -44,8 +44,7 @@ shadow-rs = "0"
 charcoal-dict = {git = "https://github.com/lengyijun/charcoal", branch = "used_in_dioxionary" }
 
 [dependencies.fsrs]
-git = "https://github.com/open-spaced-repetition/fsrs-rs.git"
-rev = "f45f46bdba6625f03677eaeb039dd8a6ffcad688"
+version = "0.5.5"
 
 [build-dependencies]
 shadow-rs = "0"

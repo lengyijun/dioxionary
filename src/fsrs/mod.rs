@@ -5,7 +5,7 @@ use chrono::DateTime;
 use chrono::Duration;
 use chrono::Local;
 use fsrs::MemoryState;
-use fsrs::DEFAULT_WEIGHTS;
+use fsrs::DEFAULT_PARAMETERS;
 use fsrs::FSRS;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -25,8 +25,8 @@ pub struct MemoryStateWrapper {
 impl Default for MemoryStateWrapper {
     fn default() -> Self {
         Self {
-            stability: DEFAULT_WEIGHTS[0],
-            difficulty: DEFAULT_WEIGHTS[4] + 2.0 * DEFAULT_WEIGHTS[5],
+            stability: DEFAULT_PARAMETERS[0],
+            difficulty: DEFAULT_PARAMETERS[4] + 2.0 * DEFAULT_PARAMETERS[5],
             interval: 1,
             last_reviewed: Local::now(),
         }
@@ -55,7 +55,7 @@ pub struct Deck {
 impl Default for Deck {
     fn default() -> Self {
         Self {
-            fsrs: LazyCell::new(|| FSRS::new(Some(&DEFAULT_WEIGHTS)).unwrap()),
+            fsrs: LazyCell::new(|| FSRS::new(Some(&DEFAULT_PARAMETERS)).unwrap()),
             conn: LazyCell::new(|| history::get_db().unwrap()),
         }
     }
