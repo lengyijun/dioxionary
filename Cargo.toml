@@ -23,7 +23,7 @@ clap = { version = "4", features = ["derive", "help"], default-features = false 
 prettytable = { default-features = false, version = "0.10.0" }
 eio = { default-features = false, version = "0.1.2" }
 flate2 = { version = "1", features = ["any_zlib", "libz-sys"], default-features = false }
-rustyline = { features = ["derive"], version = "14" }
+rustyline = { git = "https://github.com/lengyijun/rustyline", branch = "lower_sqlite_version", features = ["derive", "with-sqlite-history"] }
 dialoguer = { default-features = false, version = "0.11.0" }
 tokio = { version = "1", default-features = false }
 rodio = "0.17.3"

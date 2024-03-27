@@ -17,18 +17,38 @@ pub fn get_db() -> Result<Connection> {
         create_dir(&path).with_context(|| format!("Failed to create directory {:?}", path))?;
     }
     path.push("dioxionary.db");
-    let db = Connection::open(path)?;
-    db.execute(
-        "CREATE TABLE IF NOT EXISTS fsrs (
-        word TEXT PRIMARY KEY,
-        difficulty REAL NOT NULL,
-        stability REAL NOT NULL,
-        interval INTEGER NOT NULL,
-        last_reviewed TEXT NOT NULL
-        )",
-        (), // empty list of parameters.
-    )?;
-    Ok(db)
+    let conn = Connection::open(path)?;
+    let user_version: i32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    if user_version <= 0 {
+        conn.execute_batch(
+            "
+BEGIN EXCLUSIVE;
+CREATE TABLE fsrs (
+word TEXT PRIMARY KEY,
+difficulty REAL NOT NULL,
+stability REAL NOT NULL,
+interval INTEGER NOT NULL,
+last_reviewed TEXT NOT NULL
+);
+CREATE VIRTUAL TABLE fsrs_fts USING fts4(content=fsrs, word);
+CREATE TRIGGER history_bu BEFORE UPDATE ON fsrs BEGIN
+    DELETE FROM fsrs_fts WHERE docid=old.rowid;
+END;
+CREATE TRIGGER history_bd BEFORE DELETE ON fsrs BEGIN
+    DELETE FROM fsrs_fts WHERE docid=old.rowid;
+END;
+CREATE TRIGGER history_au AFTER UPDATE ON fsrs BEGIN
+    INSERT INTO fsrs_fts (docid, word) VALUES (new.rowid, new.word);
+END;
+CREATE TRIGGER history_ai AFTER INSERT ON fsrs BEGIN
+    INSERT INTO fsrs_fts (docid, word) VALUES(new.rowid, new.word);
+END;
+PRAGMA user_version = 1;
+COMMIT;
+",
+        )?;
+    }
+    Ok(conn)
 }
 
 /// Add a looked up word to history.

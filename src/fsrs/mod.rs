@@ -7,8 +7,15 @@ use chrono::Local;
 use fsrs::MemoryState;
 use fsrs::DEFAULT_PARAMETERS;
 use fsrs::FSRS;
+use rusqlite::params;
 use rusqlite::Connection;
+use rusqlite::OptionalExtension;
+use rustyline::error::ReadlineError;
+use rustyline::history::History;
+use rustyline::history::SearchDirection;
+use rustyline::history::SearchResult;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::cell::LazyCell;
 use std::str::FromStr;
 
@@ -157,4 +164,168 @@ fn get_word(conn: &Connection, word: &str) -> Result<MemoryStateWrapper> {
         },
     )?;
     Ok(sm)
+}
+
+impl Deck {
+    fn search_match(
+        &self,
+        term: &str,
+        start: usize,
+        dir: SearchDirection,
+        start_with: bool,
+    ) -> rustyline::Result<Option<SearchResult>> {
+        if term.is_empty() || start >= self.len() {
+            return Ok(None);
+        }
+        let start = start + 1; // first rowid is 1
+        let query = match (dir, start_with) {
+            (SearchDirection::Forward, true) => {
+                "SELECT docid, word FROM fsrs_fts WHERE word MATCH '^' || ?1 || '*'  AND docid >= ?2 \
+                 ORDER BY docid ASC LIMIT 1;"
+            }
+            (SearchDirection::Forward, false) => {
+                "SELECT docid, word, offsets(fsrs_fts) FROM fsrs_fts WHERE word MATCH ?1 || '*'  AND docid \
+                 >= ?2 ORDER BY docid ASC LIMIT 1;"
+            }
+            (SearchDirection::Reverse, true) => {
+                "SELECT docid, word FROM fsrs_fts WHERE word MATCH '^' || ?1 || '*'  AND docid <= ?2 \
+                 ORDER BY docid DESC LIMIT 1;"
+            }
+            (SearchDirection::Reverse, false) => {
+                "SELECT docid, word, offsets(fsrs_fts) FROM fsrs_fts WHERE word MATCH ?1 || '*'  AND docid \
+                 <= ?2 ORDER BY docid DESC LIMIT 1;"
+            }
+        };
+        let mut stmt = self.conn.prepare_cached(query)?;
+        let x = stmt
+            .query_row((term, start), |r| {
+                let rowid = r.get::<_, usize>(0)?;
+                /*
+                if rowid > self.row_id.get() {
+                    self.row_id.set(rowid);
+                }
+                */
+                Ok(SearchResult {
+                    entry: Cow::Owned(r.get(1)?),
+                    idx: rowid - 1, // rowid - 1
+                    pos: if start_with {
+                        term.len()
+                    } else {
+                        offset(r.get(2)?)
+                    },
+                })
+            })
+            .optional()?;
+        Ok(x)
+    }
+}
+
+impl History for Deck {
+    fn get(
+        &self,
+        index: usize,
+        dir: rustyline::history::SearchDirection,
+    ) -> rustyline::Result<Option<rustyline::history::SearchResult>> {
+        let rowid = index + 1; // first rowid is 1
+        if self.is_empty() {
+            return Ok(None);
+        }
+        // rowid may not be sequential
+        let query = match dir {
+            SearchDirection::Forward => {
+                "SELECT rowid, word FROM fsrs WHERE rowid >= ?1 ORDER BY rowid ASC LIMIT 1;"
+            }
+            SearchDirection::Reverse => {
+                "SELECT rowid, word FROM fsrs WHERE rowid <= ?1 ORDER BY rowid DESC LIMIT 1;"
+            }
+        };
+        let mut stmt = self.conn.prepare_cached(query)?;
+        stmt.query_row([rowid], |r| {
+            let rowid = r.get::<_, usize>(0)?;
+            /*
+            if rowid > self.row_id.get() {
+                self.row_id.set(rowid);
+            }
+             */
+            Ok(SearchResult {
+                entry: Cow::Owned(r.get(1)?),
+                idx: rowid - 1,
+                pos: 0,
+            })
+        })
+        .optional()
+        .map_err(ReadlineError::from)
+    }
+
+    fn add(&mut self, line: &str) -> rustyline::Result<bool> {
+        // deal with in SpacedRepetiton
+        Ok(true)
+    }
+
+    fn add_owned(&mut self, line: String) -> rustyline::Result<bool> {
+        self.add(line.as_str())
+    }
+
+    fn len(&self) -> usize {
+        let mut stmt = self.conn.prepare("SELECT COUNT(*) FROM fsrs").unwrap();
+        stmt.query_row::<usize, _, _>(params![], |r| r.get(0))
+            .unwrap()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    fn set_max_len(&mut self, len: usize) -> rustyline::Result<()> {
+        // never call
+        Ok(())
+    }
+
+    fn ignore_dups(&mut self, yes: bool) -> rustyline::Result<()> {
+        Ok(())
+    }
+
+    fn ignore_space(&mut self, yes: bool) {}
+
+    fn save(&mut self, path: &std::path::Path) -> rustyline::Result<()> {
+        todo!()
+    }
+
+    fn append(&mut self, path: &std::path::Path) -> rustyline::Result<()> {
+        todo!()
+    }
+
+    fn load(&mut self, path: &std::path::Path) -> rustyline::Result<()> {
+        todo!()
+    }
+
+    fn clear(&mut self) -> rustyline::Result<()> {
+        // never call
+        Ok(())
+    }
+
+    fn search(
+        &self,
+        term: &str,
+        start: usize,
+        dir: rustyline::history::SearchDirection,
+    ) -> rustyline::Result<Option<rustyline::history::SearchResult>> {
+        self.search_match(term, start, dir, false)
+    }
+
+    fn starts_with(
+        &self,
+        term: &str,
+        start: usize,
+        dir: rustyline::history::SearchDirection,
+    ) -> rustyline::Result<Option<rustyline::history::SearchResult>> {
+        self.search_match(term, start, dir, true)
+    }
+}
+
+fn offset(s: String) -> usize {
+    s.split(' ')
+        .nth(2)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0)
 }

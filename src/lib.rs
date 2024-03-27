@@ -26,7 +26,7 @@ use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
 use rustyline::hint::HistoryHinter;
 use rustyline::history::DefaultHistory;
-use rustyline::{Completer, Helper, Hinter, Validator};
+use rustyline::{Completer, Config, Helper, Hinter, Validator};
 use stardict::{EntryWrapper, StarDict};
 use std::borrow::Cow::{self, Borrowed, Owned};
 use std::{fs::DirEntry, path::PathBuf};
@@ -242,7 +242,10 @@ pub fn repl(
     _path: &Option<String>,
     _read_aloud: bool,
 ) -> Result<()> {
-    let mut rl = rustyline::Editor::<MyHelper, DefaultHistory>::new()?;
+    let mut rl = rustyline::Editor::<MyHelper, fsrs::Deck>::with_history(
+        Config::default(),
+        fsrs::Deck::default(),
+    )?;
     rl.set_helper(Some(MyHelper(HistoryHinter::new())));
     loop {
         let readline = rl.readline("\x1b[34m>> \x1b[0m");
