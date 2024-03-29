@@ -329,3 +329,20 @@ fn offset(s: String) -> usize {
         .and_then(|s| s.parse().ok())
         .unwrap_or(0)
 }
+
+impl Deck {
+    pub fn fuzzy_lookup_in_history(&self, target_word: &str, threhold: usize) -> Vec<String> {
+        let mut stmt = self.conn.prepare("SELECT word FROM fsrs").unwrap();
+        stmt.query_map([], |row| {
+            let word: String = row.get(0).unwrap();
+            if strsim::levenshtein(&word, target_word) <= threhold {
+                Ok(word)
+            } else {
+                Err(rusqlite::Error::ExecuteReturnedResults)
+            }
+        })
+        .unwrap()
+        .flatten()
+        .collect()
+    }
+}

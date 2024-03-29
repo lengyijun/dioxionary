@@ -247,13 +247,32 @@ pub fn repl(
         fsrs::Deck::default(),
     )?;
     rl.set_helper(Some(MyHelper(HistoryHinter::new())));
+    let mut history: Vec<String> = Vec::new();
     loop {
         let readline = rl.readline("\x1b[34m>> \x1b[0m");
         match readline {
             Ok(word) => {
                 let word = word.trim();
-                if !word.is_empty() {
+                if word == "similar"
+                    || word == "similars"
+                    || word == "similar words"
+                    || word == "similar word"
+                {
+                    if let Some(last_word) = history.last() {
+                        let similar_words = rl.history.fuzzy_lookup_in_history(last_word, 2);
+                        if similar_words.is_empty() {
+                            println!("not similar words found")
+                        } else {
+                            for x in similar_words {
+                                println!("{x}");
+                            }
+                        }
+                    } else {
+                        println!("no previous word")
+                    }
+                } else if !word.is_empty() {
                     let _ = rl.add_history_entry(word);
+                    history.push(word.to_owned());
                     match query(&word) {
                         Ok((found, s)) => {
                             let s = s.iter().map(PathOrStr::get_str).join("\n\n");
