@@ -16,6 +16,7 @@ pub mod theme;
 use crate::dict::is_enword;
 use crate::stardict::SearchAble;
 use anyhow::{anyhow, Context, Result};
+use charcoal_dict::Answer;
 use charcoal_dict::{app::config::Normal, word::QueryYoudict, Acquire, ExactQuery, PPrint};
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
 use dirs::home_dir;
@@ -127,8 +128,11 @@ pub fn query(word: &str) -> Result<(QueryStatus, Vec<PathOrStr>)> {
 
     if found == QueryStatus::NotFound {
         let exact_query = ExactQuery::new(word.to_owned()).unwrap();
-        if let Ok(single_query) = QueryYoudict::new().acquire(&exact_query) {
-            v.push(PathOrStr::NormalStr(single_query.to_string()));
+        if let Ok(single_query) = QueryYoudict::new().acquire(&exact_query)
+            && let s = single_query.to_string()
+            && !s.trim().is_empty()
+        {
+            v.push(PathOrStr::NormalStr(s));
             found = QueryStatus::FoundOnline;
         }
     }
@@ -170,7 +174,9 @@ pub fn query_and_push_tty(word: &str) -> QueryStatus {
                     },
                 },
             );
-            found = QueryStatus::FoundOnline;
+            if !single_query.not_found() {
+                found = QueryStatus::FoundOnline;
+            }
         }
     }
 
