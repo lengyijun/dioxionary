@@ -13,8 +13,6 @@ build = "build.rs"
 
 [dependencies]
 reqwest = { version = "0.12", features = ["blocking", "default-tls"], default-features = false }
-hyper = "1"
-scraper = { default-features = false, version = "0.19" }
 dirs = "5"
 rusqlite = "0.30.0"
 chrono = { features = ["clock", "serde"], default-features = false, version = "0.4" }
