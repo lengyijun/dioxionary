@@ -6,7 +6,7 @@ use clap::CommandFactory;
 use dioxionary::{
     cli::{Action, Cli, Parser},
     dict::is_enword,
-    history, list_dicts, query_and_push_tty, query_fuzzy, repl, QueryStatus,
+    history, list_dicts, query_and_push_tty, query_fuzzy_interactive, repl, QueryStatus,
 };
 use shadow_rs::shadow;
 use std::{env, path::PathBuf};
@@ -101,7 +101,7 @@ fn lookup(
                 history::add_history(word.to_owned())?;
             }
             if found != QueryStatus::FoundLocally && interactive {
-                let _ = query_fuzzy(word);
+                let _ = query_fuzzy_interactive(word);
             }
         }
         Ok(())

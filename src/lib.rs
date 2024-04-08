@@ -186,20 +186,8 @@ pub fn query_and_push_tty(word: &str) -> QueryStatus {
     found
 }
 
-pub fn query_fuzzy(word: &str) -> Result<()> {
-    let dicts = get_dics();
-
-    let v = dicts
-        .iter()
-        .flat_map(|dict| {
-            dict.fuzzy_lookup(word)
-                .into_iter()
-                .map(|entry| EntryWrapper {
-                    dict_name: dict.dict_name(),
-                    entry,
-                })
-        })
-        .collect::<Vec<_>>();
+pub fn query_fuzzy_interactive(word: &str) -> Result<()> {
+    let v = query_fuzzy(word);
     if !v.is_empty() {
         let mut last_selection = 0;
         loop {
@@ -217,6 +205,23 @@ pub fn query_fuzzy(word: &str) -> Result<()> {
         eprintln!("Nothing similar to mouth bit, sorry :(");
     }
     Ok(())
+}
+
+pub fn query_fuzzy(word: &str) -> Vec<EntryWrapper> {
+    let dicts = get_dics().leak();
+
+    let v = dicts
+        .iter()
+        .flat_map(|dict| {
+            dict.fuzzy_lookup(word)
+                .into_iter()
+                .map(|entry| EntryWrapper {
+                    dict_name: dict.dict_name(),
+                    entry,
+                })
+        })
+        .collect::<Vec<_>>();
+    v
 }
 
 #[derive(Completer, Helper, Hinter, Validator)]
