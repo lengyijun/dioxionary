@@ -1,10 +1,11 @@
 use anyhow::Context;
 use dioxionary::stardict::{Idx, Ifo};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::env::args;
 use std::fs::{self, File};
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
+use string_interner::StringInterner;
 
 fn main() {
     let file_name = args().nth(1).expect("file_name expected");
@@ -12,8 +13,8 @@ fn main() {
     let Ok(mut lines) = read_lines(&file_path) else {
         panic!("can't read file")
     };
-    let mut content: String = String::new();
-    let mut btree_map: BTreeMap<(String, String), (u32, u32)> = BTreeMap::new();
+    let mut interner = StringInterner::default();
+    let mut btree_map: BTreeMap<(String, String), _> = BTreeMap::new();
 
     while let Some(line) = lines.next() {
         let Ok(line) = line else { continue };
@@ -21,7 +22,7 @@ fn main() {
         if line.is_empty() {
             continue;
         }
-        let offset = content.len();
+        let mut content = String::new();
         while let Some(Ok(line)) = lines.next() {
             if line.trim().is_empty() {
                 break;
@@ -29,14 +30,10 @@ fn main() {
             content.push('\n');
             content += &line;
         }
-        let size = content.len() - offset;
-        if size == 0 {
+        if content.is_empty() {
             eprintln!("no content found for {line}");
             continue;
         }
-
-        let offset: u32 = offset.try_into().unwrap();
-        let size: u32 = size.try_into().unwrap();
 
         for key_word in line
             .split('|')
@@ -44,14 +41,33 @@ fn main() {
             .filter(|word| !word.is_empty())
             .collect::<BTreeSet<_>>()
         {
-            if let Some(_) = btree_map.insert(
-                (key_word.to_lowercase(), key_word.to_owned()),
-                (offset, size),
-            ) {
-                eprintln!("duplicate {key_word}");
-            };
+            match btree_map.entry((key_word.to_lowercase(), key_word.to_owned())) {
+                std::collections::btree_map::Entry::Vacant(v) => {
+                    v.insert(interner.get_or_intern(content.clone()));
+                }
+                std::collections::btree_map::Entry::Occupied(mut o) => {
+                    let acc = interner.resolve(*o.get()).unwrap();
+                    let content = format!("{acc}\n{content}");
+                    o.insert(interner.get_or_intern(content));
+                }
+            }
         }
     }
+
+    let mut content: String = String::new();
+    let values: HashSet<_> = btree_map.values().copied().collect();
+    let values: HashMap<_, (u32, u32)> = values
+        .into_iter()
+        .map(|symbol| {
+            let offset = content.len();
+            content += interner.resolve(symbol).unwrap();
+            let size = content.len() - offset;
+            (
+                symbol,
+                (offset.try_into().unwrap(), size.try_into().unwrap()),
+            )
+        })
+        .collect();
 
     let ifo = Ifo {
         version: dioxionary::stardict::Version::V242,
@@ -76,7 +92,10 @@ fn main() {
 
     let items: Vec<(String, u32, u32)> = btree_map
         .into_iter()
-        .map(|((_, k), (offset, size))| (k, offset, size))
+        .map(|((_, k), symbol)| {
+            let (offset, size) = values.get(&symbol).unwrap();
+            (k, *offset, *size)
+        })
         .collect();
     Idx::write_bytes(file_path.with_extension("idx"), items).expect("can't write idx");
 

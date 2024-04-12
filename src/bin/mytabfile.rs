@@ -1,10 +1,13 @@
 use anyhow::Context;
 use dioxionary::stardict::{Idx, Ifo};
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env::args;
 use std::fs::{self, File};
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
+use string_interner::StringInterner;
 
 fn main() {
     let file_name = args().nth(1).expect("file_name expected");
@@ -12,8 +15,8 @@ fn main() {
     let Ok(mut lines) = read_lines(&file_path) else {
         panic!("can't read file")
     };
-    let mut content: String = String::new();
-    let mut btree_map: BTreeMap<(String, String), (u32, u32)> = BTreeMap::new();
+    let mut interner = StringInterner::default();
+    let mut btree_map: BTreeMap<(String, String), _> = BTreeMap::new();
 
     while let Some(line) = lines.next() {
         let Ok(line) = line else { continue };
@@ -22,23 +25,23 @@ fn main() {
             continue;
         }
         if let Some((key_word, c)) = line.split_once('\u{0009}') {
-            let c = c.replace("\\n", "\n");
-            let size: u32 = c.len().try_into().unwrap();
-            if size == 0 {
+            let content = c.replace("\\n", "\n");
+            if content.is_empty() {
                 eprintln!("no content found for {line}");
                 continue;
             }
-            let offset: u32 = content.len().try_into().unwrap();
-            content += &c;
 
-            if let Some(_) = btree_map.insert(
-                (key_word.to_lowercase(), key_word.to_owned()),
-                (offset, size),
-            ) {
-                eprintln!("duplicate {key_word}");
-            };
+            match btree_map.entry((key_word.to_lowercase(), key_word.to_owned())) {
+                std::collections::btree_map::Entry::Vacant(v) => {
+                    v.insert(interner.get_or_intern(content.clone()));
+                }
+                std::collections::btree_map::Entry::Occupied(mut o) => {
+                    let acc = interner.resolve(*o.get()).unwrap();
+                    o.insert(interner.get_or_intern(format!("{acc}\n{content}")));
+                }
+            }
         } else {
-            let offset = content.len();
+            let mut content = String::new();
             while let Some(Ok(line)) = lines.next() {
                 if line.trim().is_empty() {
                     break;
@@ -48,26 +51,22 @@ fn main() {
                 if let Some(x) = line.find('\u{0009}') {
                     let key_word = &line[0..x];
                     let c = &line[x + 1..];
-                    if let Some(_) = btree_map.insert(
-                        (key_word.to_lowercase(), key_word.to_owned()),
-                        (
-                            (content.len() + x + 1).try_into().unwrap(),
-                            c.len().try_into().unwrap(),
-                        ),
-                    ) {
-                        eprintln!("duplicate {key_word}");
-                    };
+                    match btree_map.entry((key_word.to_lowercase(), key_word.to_owned())) {
+                        std::collections::btree_map::Entry::Vacant(v) => {
+                            v.insert(interner.get_or_intern(c));
+                        }
+                        std::collections::btree_map::Entry::Occupied(mut o) => {
+                            let acc = interner.resolve(*o.get()).unwrap();
+                            o.insert(interner.get_or_intern(format!("{acc}\n{c}")));
+                        }
+                    }
                 }
                 content += &line;
             }
-            let size = content.len() - offset;
-            if size == 0 {
+            if content.is_empty() {
                 eprintln!("no content found for {line}");
                 continue;
             }
-
-            let offset: u32 = offset.try_into().unwrap();
-            let size: u32 = size.try_into().unwrap();
 
             for key_word in line
                 .split('|')
@@ -75,15 +74,33 @@ fn main() {
                 .filter(|word| !word.is_empty())
                 .collect::<BTreeSet<_>>()
             {
-                if let Some(_) = btree_map.insert(
-                    (key_word.to_lowercase(), key_word.to_owned()),
-                    (offset, size),
-                ) {
-                    eprintln!("duplicate {key_word}");
-                };
+                match btree_map.entry((key_word.to_lowercase(), key_word.to_owned())) {
+                    std::collections::btree_map::Entry::Vacant(v) => {
+                        v.insert(interner.get_or_intern(content.clone()));
+                    }
+                    std::collections::btree_map::Entry::Occupied(mut o) => {
+                        let acc = interner.resolve(*o.get()).unwrap();
+                        o.insert(interner.get_or_intern(format!("{acc}\n{content}")));
+                    }
+                }
             }
         };
     }
+
+    let mut content: String = String::new();
+    let values: HashSet<_> = btree_map.values().copied().collect();
+    let values: HashMap<_, (u32, u32)> = values
+        .into_iter()
+        .map(|symbol| {
+            let offset = content.len();
+            content += interner.resolve(symbol).unwrap();
+            let size = content.len() - offset;
+            (
+                symbol,
+                (offset.try_into().unwrap(), size.try_into().unwrap()),
+            )
+        })
+        .collect();
 
     let ifo = Ifo {
         version: dioxionary::stardict::Version::V242,
@@ -108,7 +125,10 @@ fn main() {
 
     let items: Vec<(String, u32, u32)> = btree_map
         .into_iter()
-        .map(|((_, k), (offset, size))| (k, offset, size))
+        .map(|((_, k), symbol)| {
+            let (offset, size) = values.get(&symbol).unwrap();
+            (k, *offset, *size)
+        })
         .collect();
     Idx::write_bytes(file_path.with_extension("idx"), items).expect("can't write idx");
 

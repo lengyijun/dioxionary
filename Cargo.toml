@@ -40,6 +40,7 @@ syntect = "5"
 pulldown-cmark-mdcat-ratatui = { git = "https://github.com/lengyijun/mdcat-ratatui" , branch = "ratatui", package = "pulldown-cmark-mdcat" }
 shadow-rs = "0"
 charcoal-dict = {git = "https://github.com/lengyijun/charcoal", branch = "used_in_dioxionary" }
+string-interner = "0.15.0"
 
 [dependencies.fsrs]
 version = "0.5.5"
