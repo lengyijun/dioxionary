@@ -12,6 +12,7 @@ pub mod review_helper;
 pub mod spaced_repetition;
 pub mod stardict;
 pub mod theme;
+pub mod unicode;
 
 use crate::dict::is_enword;
 use crate::stardict::SearchAble;
@@ -31,6 +32,7 @@ use rustyline::{Completer, Config, Helper, Hinter, Validator};
 use stardict::{EntryWrapper, StarDict};
 use std::borrow::Cow::{self, Borrowed, Owned};
 use std::{fs::DirEntry, path::PathBuf};
+use unicode::UnicodePicker;
 
 /// Get the entries of the stardicts.
 fn get_dicts_entries() -> Result<Vec<DirEntry>> {
@@ -90,6 +92,7 @@ fn get_dics() -> Vec<Box<dyn SearchAble>> {
             }
         }
     }
+    dicts.push(Box::new(UnicodePicker));
     dicts
 }
 
