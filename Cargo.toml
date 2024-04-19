@@ -41,6 +41,7 @@ pulldown-cmark-mdcat-ratatui = { git = "https://github.com/lengyijun/mdcat-ratat
 shadow-rs = "0"
 charcoal-dict = {git = "https://github.com/lengyijun/charcoal", branch = "used_in_dioxionary" }
 string-interner = "0.15.0"
+rust-stemmers = "1.2.0"
 
 [dependencies.fsrs]
 version = "0.5.5"
