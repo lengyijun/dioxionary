@@ -23,15 +23,12 @@ impl SearchAble for UnicodePicker {
         let mut s = String::new();
 
         'outer: for line in reader.lines().flatten() {
-            let Some((line, _)) = line.split_once("  ") else {
-                continue;
-            };
             let v = line.split(' ');
             for x in v.skip(1) {
                 let x = x.to_lowercase();
                 let x = en_stemmer.stem(&x);
                 if x == word {
-                    s += line;
+                    s += &line;
                     s += "\n";
                     continue 'outer;
                 }
