@@ -4,16 +4,18 @@ use rust_stemmers::{Algorithm, Stemmer};
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::path::PathBuf;
 
 /// https://github.com/jeremija/unipicker
 use crate::stardict::SearchAble;
 
-pub struct UnicodePicker;
+pub struct UnicodePicker {
+    pub path: PathBuf,
+}
 
 impl SearchAble for UnicodePicker {
     fn exact_lookup(&self, word: &str) -> Option<PathOrStr> {
-        let p = home_dir()?.join(".config/dioxionary/unipicker-symbols");
-        let file = File::open(p).ok()?;
+        let file = File::open(&self.path).ok()?;
         let reader = BufReader::new(file);
 
         let en_stemmer = Stemmer::create(Algorithm::English);
