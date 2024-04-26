@@ -92,7 +92,16 @@ fn get_dics() -> Vec<Box<dyn SearchAble>> {
             }
         }
     }
-    dicts.push(Box::new(UnicodePicker));
+    dicts.push(Box::new(UnicodePicker {
+        path: home_dir()
+            .unwrap()
+            .join(".config/dioxionary/unipicker-symbols"),
+    }));
+    dicts.push(Box::new(UnicodePicker {
+        path: home_dir()
+            .unwrap()
+            .join(".local/cheatsheet/personal/ubuntu"),
+    }));
     dicts
 }
 
