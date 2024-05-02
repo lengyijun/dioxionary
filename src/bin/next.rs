@@ -7,6 +7,7 @@ use clap::Parser;
 use dioxionary::fsrs::Deck;
 use dioxionary::fsrs::MemoryStateWrapper;
 use dioxionary::history;
+use dioxionary::query_and_push_tty;
 use dioxionary::spaced_repetition::SpacedRepetiton;
 use dioxionary::stardict::NotFoundError;
 use std::collections::HashSet;
@@ -20,6 +21,10 @@ struct Args {
 
     #[arg(long, default_value_t = false)]
     random: bool,
+
+    // show answer
+    #[arg(long, default_value_t = false)]
+    answer: bool,
 }
 
 fn main() -> Result<()> {
@@ -45,6 +50,10 @@ fn main() -> Result<()> {
     };
     println!("{w}");
     eprintln!("{w}");
+
+    if args.answer {
+        query_and_push_tty(&w);
+    }
 
     Ok(())
 }
