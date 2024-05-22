@@ -17,15 +17,13 @@ pub fn is_enword(word: &str) -> bool {
 
 /// Play word pronunciation.
 pub fn read_aloud(word: &str) -> Result<()> {
-    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let (_stream, stream_handle) = OutputStream::try_default()?;
     let url = format!("https://dict.youdao.com/dictvoice?audio={}&type=1", word);
     let response = reqwest::blocking::get(url)?;
     let inner = response.bytes()?;
-    if let Ok(source) = Decoder::new(Cursor::new(inner)) {
-        if let Ok(sink) = Sink::try_new(&stream_handle) {
-            sink.append(source);
-            sink.sleep_until_end();
-        }
-    }
+    let source = Decoder::new(Cursor::new(inner))?;
+    let sink = Sink::try_new(&stream_handle)?;
+    sink.append(source);
+    sink.sleep_until_end();
     Ok(())
 }
