@@ -31,6 +31,7 @@ use rustyline::history::DefaultHistory;
 use rustyline::{Completer, Config, Helper, Hinter, Validator};
 use stardict::{EntryWrapper, StarDict};
 use std::borrow::Cow::{self, Borrowed, Owned};
+use std::process::Command;
 use std::{fs::DirEntry, path::PathBuf};
 use unicode::UnicodePicker;
 
@@ -150,7 +151,14 @@ pub fn query(word: &str) -> Result<(QueryStatus, Vec<PathOrStr>)> {
     }
 
     // ignore audio error
-    let _ = dict::read_aloud(word);
+    if dict::read_aloud(word).is_err() {
+        // espeak -s 50 "Your text here"
+        let _ = Command::new("espeak")
+            .arg("-s")
+            .arg("50")
+            .arg(word)
+            .status(); // ignore error
+    }
 
     Ok((found, v))
 }
