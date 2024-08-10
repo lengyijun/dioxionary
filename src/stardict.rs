@@ -346,7 +346,11 @@ impl Dict {
     }
 
     fn get(&self, offset: usize, size: usize) -> &str {
-        &self.contents.get_or_init(|| self.dict_type.load())[offset..offset + size]
+        &self
+            .contents
+            .get_or_init(|| self.dict_type.load())
+            .get(offset..offset + size)
+            .unwrap_or_default()
     }
 }
 
