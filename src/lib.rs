@@ -1,5 +1,4 @@
 #![feature(let_chains)]
-#![feature(lazy_cell)]
 
 //! StarDict in Rust!
 //! Use offline or online dictionary to look up words and memorize words in the terminal!
@@ -27,7 +26,6 @@ use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
 use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
 use rustyline::hint::HistoryHinter;
-use rustyline::history::DefaultHistory;
 use rustyline::{Completer, Config, Helper, Hinter, Validator};
 use stardict::{EntryWrapper, StarDict};
 use std::borrow::Cow::{self, Borrowed, Owned};
