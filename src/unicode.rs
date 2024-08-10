@@ -1,4 +1,3 @@
-use dirs::home_dir;
 use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
 use rust_stemmers::{Algorithm, Stemmer};
 use std::fs::File;
