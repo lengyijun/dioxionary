@@ -1,11 +1,7 @@
 //! Look up words from the Internet.
 use anyhow::{anyhow, Context, Result};
-use itertools::{
-    EitherOrBoth::{Both, Left, Right},
-    Itertools,
-};
+use itertools::EitherOrBoth::{Both, Left, Right};
 use rodio::{Decoder, OutputStream, Sink};
-use std::fmt;
 use std::io::Cursor;
 
 /// Is an English word?
