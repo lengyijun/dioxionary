@@ -301,7 +301,7 @@ impl History for SQLiteHistory {
     }
 
     fn add_owned(&mut self, line: String) -> Result<bool> {
-        self.add(line.as_str())
+        unreachable!()
     }
 
     /// This is not really the length
