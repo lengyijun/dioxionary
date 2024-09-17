@@ -4,7 +4,7 @@ use anyhow::Result;
 use chrono::DateTime;
 use chrono::Local;
 use clap::Parser;
-use dioxionary::fsrs::Deck;
+use dioxionary::fsrs::sqlite_history::SQLiteHistory;
 use dioxionary::fsrs::MemoryStateWrapper;
 use dioxionary::history;
 use dioxionary::query_and_push_tty;
@@ -30,7 +30,7 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
     let w = if args.random {
-        let deck = Deck::default();
+        let deck = SQLiteHistory::default();
         match deck.next_to_review() {
             Ok(Some(s)) => s,
             _ => {

@@ -271,9 +271,9 @@ pub fn repl(
     _path: &Option<String>,
     _read_aloud: bool,
 ) -> Result<()> {
-    let mut rl = rustyline::Editor::<MyHelper, fsrs::Deck>::with_history(
+    let mut rl = rustyline::Editor::<MyHelper, fsrs::sqlite_history::SQLiteHistory>::with_history(
         Config::default(),
-        fsrs::Deck::default(),
+        fsrs::sqlite_history::SQLiteHistory::default(),
     )?;
     rl.set_helper(Some(MyHelper(HistoryHinter::new())));
     let mut history: Vec<String> = Vec::new();
