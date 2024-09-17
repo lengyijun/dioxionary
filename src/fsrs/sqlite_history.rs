@@ -1,5 +1,7 @@
 //! https://github.com/kkawakam/rustyline/blob/master/src/sqlite_history.rs
 //! History impl. based on SQLite
+use crate::fsrs::MemoryStateWrapper;
+
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fs::create_dir;
@@ -193,13 +195,23 @@ COMMIT;
         false
     }
 
-    fn add_entry(&mut self, line: &str) -> Result<bool> {
+    fn add_entry(&mut self, line: &str, sm: MemoryStateWrapper) -> Result<bool> {
         // ignore SQLITE_CONSTRAINT_UNIQUE
         let mut stmt = self.conn.prepare_cached(
-            "INSERT OR REPLACE INTO fsrs (session_id, word) VALUES (?1, ?2) RETURNING rowid;",
+"INSERT OR REPLACE INTO fsrs (session_id, word, stability, difficulty, interval, last_reviewed) VALUES (?1, ?2, ?3, ?4, ?5, ?6) RETURNING rowid;",
         )?;
         if let Some(row_id) = stmt
-            .query_row((self.session_id, line), |r| r.get(0))
+            .query_row(
+                (
+                    self.session_id,
+                    line,
+                    sm.stability,
+                    sm.difficulty,
+                    sm.interval,
+                    sm.last_reviewed.to_string(),
+                ),
+                |r| r.get(0),
+            )
             .optional()?
         {
             self.row_id.set(row_id);
@@ -297,7 +309,7 @@ impl History for SQLiteHistory {
         }
         // Do not create a session until the first entry is added.
         self.create_session()?;
-        self.add_entry(line)
+        self.add_entry(line, Default::default())
     }
 
     fn add_owned(&mut self, line: String) -> Result<bool> {
