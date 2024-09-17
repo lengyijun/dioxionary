@@ -5,7 +5,6 @@ use itertools::{
     Itertools,
 };
 use rodio::{Decoder, OutputStream, Sink};
-use scraper::{Html, Selector};
 use std::fmt;
 use std::io::Cursor;
 
