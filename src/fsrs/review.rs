@@ -62,7 +62,11 @@ pub fn main() -> Result<()> {
 
     let mut history: Vec<String> = Vec::new();
 
-    let res = run_app(&mut terminal, crate::fsrs::Deck::default(), &mut history);
+    let res = run_app(
+        &mut terminal,
+        crate::fsrs::sqlite_history::SQLiteHistory::default(),
+        &mut history,
+    );
 
     // restore terminal
     disable_raw_mode()?;

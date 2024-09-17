@@ -15,42 +15,12 @@ pub fn get_db() -> Result<Connection> {
     }
     path.push("dioxionary.db");
     let conn = Connection::open(path)?;
-    let user_version: i32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    if user_version <= 0 {
-        conn.execute_batch(
-            "
-BEGIN EXCLUSIVE;
-CREATE TABLE fsrs (
-word TEXT PRIMARY KEY,
-difficulty REAL NOT NULL,
-stability REAL NOT NULL,
-interval INTEGER NOT NULL,
-last_reviewed TEXT NOT NULL
-);
-CREATE VIRTUAL TABLE fsrs_fts USING fts4(content=fsrs, word);
-CREATE TRIGGER history_bu BEFORE UPDATE ON fsrs BEGIN
-    DELETE FROM fsrs_fts WHERE docid=old.rowid;
-END;
-CREATE TRIGGER history_bd BEFORE DELETE ON fsrs BEGIN
-    DELETE FROM fsrs_fts WHERE docid=old.rowid;
-END;
-CREATE TRIGGER history_au AFTER UPDATE ON fsrs BEGIN
-    INSERT INTO fsrs_fts (docid, word) VALUES (new.rowid, new.word);
-END;
-CREATE TRIGGER history_ai AFTER INSERT ON fsrs BEGIN
-    INSERT INTO fsrs_fts (docid, word) VALUES(new.rowid, new.word);
-END;
-PRAGMA user_version = 1;
-COMMIT;
-",
-        )?;
-    }
     Ok(conn)
 }
 
 /// Add a looked up word to history.
 pub fn add_history(word: String) -> Result<()> {
-    let mut d = crate::fsrs::Deck::default();
+    let mut d = crate::fsrs::sqlite_history::SQLiteHistory::default();
     d.add_fresh_word(word)?;
     Ok(())
     // crate::sm2::Deck::add_history(word)
