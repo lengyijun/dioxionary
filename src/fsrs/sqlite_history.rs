@@ -127,7 +127,7 @@ CREATE TABLE fsrs (
     --timestamp REAL NOT NULL DEFAULT (julianday('now')),
     FOREIGN KEY (session_id) REFERENCES session(id) ON DELETE CASCADE
 ) STRICT;
-CREATE VIRTUAL TABLE fts USING fts4(content=fsrs, entry);
+CREATE VIRTUAL TABLE fts USING fts4(content=fsrs, word);
 CREATE TRIGGER history_bu BEFORE UPDATE ON fsrs BEGIN
     DELETE FROM fts WHERE docid=old.rowid;
 END;
@@ -135,10 +135,10 @@ CREATE TRIGGER history_bd BEFORE DELETE ON fsrs BEGIN
     DELETE FROM fts WHERE docid=old.rowid;
 END;
 CREATE TRIGGER history_au AFTER UPDATE ON fsrs BEGIN
-    INSERT INTO fts (docid, entry) VALUES (new.rowid, new.entry);
+    INSERT INTO fts (docid, word) VALUES (new.rowid, new.word);
 END;
 CREATE TRIGGER history_ai AFTER INSERT ON fsrs BEGIN
-    INSERT INTO fts (docid, entry) VALUES(new.rowid, new.entry);
+    INSERT INTO fts (docid, word) VALUES(new.rowid, new.word);
 END;
 PRAGMA user_version = 1;
 COMMIT;
@@ -159,7 +159,7 @@ COMMIT;
         if self.ignore_dups {
             // TODO Validate: ignore dups only in the same session_id ?
             self.conn.execute_batch(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ignore_dups ON fsrs(entry, session_id);",
+                "CREATE UNIQUE INDEX IF NOT EXISTS ignore_dups ON fsrs(word, session_id);",
             )?;
         } else {
             self.conn
@@ -196,7 +196,7 @@ COMMIT;
     fn add_entry(&mut self, line: &str) -> Result<bool> {
         // ignore SQLITE_CONSTRAINT_UNIQUE
         let mut stmt = self.conn.prepare_cached(
-            "INSERT OR REPLACE INTO fsrs (session_id, entry) VALUES (?1, ?2) RETURNING rowid;",
+            "INSERT OR REPLACE INTO fsrs (session_id, word) VALUES (?1, ?2) RETURNING rowid;",
         )?;
         if let Some(row_id) = stmt
             .query_row((self.session_id, line), |r| r.get(0))
@@ -222,19 +222,19 @@ COMMIT;
         let start = start + 1; // first rowid is 1
         let query = match (dir, start_with) {
             (SearchDirection::Forward, true) => {
-                "SELECT docid, entry FROM fts WHERE entry MATCH '^' || ?1 || '*'  AND docid >= ?2 \
+                "SELECT docid, word FROM fts WHERE word MATCH '^' || ?1 || '*'  AND docid >= ?2 \
                  ORDER BY docid ASC LIMIT 1;"
             }
             (SearchDirection::Forward, false) => {
-                "SELECT docid, entry, offsets(fts) FROM fts WHERE entry MATCH ?1 || '*'  AND docid \
+                "SELECT docid, word, offsets(fts) FROM fts WHERE word MATCH ?1 || '*'  AND docid \
                  >= ?2 ORDER BY docid ASC LIMIT 1;"
             }
             (SearchDirection::Reverse, true) => {
-                "SELECT docid, entry FROM fts WHERE entry MATCH '^' || ?1 || '*'  AND docid <= ?2 \
+                "SELECT docid, word FROM fts WHERE word MATCH '^' || ?1 || '*'  AND docid <= ?2 \
                  ORDER BY docid DESC LIMIT 1;"
             }
             (SearchDirection::Reverse, false) => {
-                "SELECT docid, entry, offsets(fts) FROM fts WHERE entry MATCH ?1 || '*'  AND docid \
+                "SELECT docid, word, offsets(fts) FROM fts WHERE word MATCH ?1 || '*'  AND docid \
                  <= ?2 ORDER BY docid DESC LIMIT 1;"
             }
         };
@@ -269,10 +269,10 @@ impl History for SQLiteHistory {
         // rowid may not be sequential
         let query = match dir {
             SearchDirection::Forward => {
-                "SELECT rowid, entry FROM fsrs WHERE rowid >= ?1 ORDER BY rowid ASC LIMIT 1;"
+                "SELECT rowid, word FROM fsrs WHERE rowid >= ?1 ORDER BY rowid ASC LIMIT 1;"
             }
             SearchDirection::Reverse => {
-                "SELECT rowid, entry FROM fsrs WHERE rowid <= ?1 ORDER BY rowid DESC LIMIT 1;"
+                "SELECT rowid, word FROM fsrs WHERE rowid <= ?1 ORDER BY rowid DESC LIMIT 1;"
             }
         };
         let mut stmt = self.conn.prepare_cached(query)?;
@@ -377,7 +377,7 @@ PRAGMA incremental_vacuum;
             self.create_session()?; // TODO preserve session.timestamp
             old.execute("ATTACH DATABASE ?1 AS new;", [path.to_string_lossy()])?; // TODO empty path / temporary database
             old.execute(
-                "INSERT OR IGNORE INTO new.fsrs (session_id, entry) SELECT ?1, entry FROM \
+                "INSERT OR IGNORE INTO new.fsrs (session_id, word) SELECT ?1, word FROM \
                  fsrs WHERE session_id = ?2;",
                 [self.session_id, old_id],
             )?; // TODO Validate: only current session entries
