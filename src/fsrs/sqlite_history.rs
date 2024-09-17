@@ -11,11 +11,8 @@ use anyhow::Context;
 use dirs::data_dir;
 use fsrs::{DEFAULT_PARAMETERS, FSRS};
 use rusqlite::{Connection, DatabaseName, OptionalExtension};
-use rustyline::history::SearchResult;
-use rustyline::{
-    error::ReadlineError, history::History, history::SearchDirection, Config, HistoryDuplicates,
-    Result,
-};
+use rustyline::history::{History, SearchDirection, SearchResult};
+use rustyline::{error::ReadlineError, Config, HistoryDuplicates, Result};
 
 /// History stored in an SQLite database.
 pub struct SQLiteHistory {
