@@ -1,14 +1,12 @@
 //! https://github.com/kkawakam/rustyline/blob/master/src/sqlite_history.rs
 //! History impl. based on SQLite
 use crate::fsrs::MemoryStateWrapper;
+use crate::history::get_db_path;
 
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::fs::create_dir;
 use std::path::{Path, PathBuf};
 
-use anyhow::Context;
-use dirs::data_dir;
 use fsrs::{DEFAULT_PARAMETERS, FSRS};
 use rusqlite::{Connection, DatabaseName, OptionalExtension};
 use rustyline::history::{History, SearchDirection, SearchResult};
@@ -49,16 +47,7 @@ impl SQLiteHistory {
 
     /// Open specified database
     pub fn open(config: Config) -> Result<Self> {
-        let mut path = data_dir()
-            .with_context(|| "Couldn't find data directory")
-            .unwrap();
-        path.push("dioxionary");
-        if !path.exists() {
-            create_dir(&path)
-                .with_context(|| format!("Failed to create directory {:?}", path))
-                .unwrap();
-        }
-        path.push("dioxionary.db");
+        let path = get_db_path().unwrap();
         Self::new(config, normalize(path.as_ref()))
     }
 

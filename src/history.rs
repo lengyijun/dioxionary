@@ -3,16 +3,21 @@ use crate::spaced_repetition::SpacedRepetiton;
 use anyhow::{Context, Result};
 use dirs::data_dir;
 use rusqlite::Connection;
-use std::fs::create_dir;
+use std::{fs::create_dir, path::PathBuf};
 
-/// Check and generate cache directory path.
-pub fn get_db() -> Result<Connection> {
+pub fn get_db_path() -> Result<PathBuf> {
     let mut path = data_dir().with_context(|| "Couldn't find data directory")?;
     path.push("dioxionary");
     if !path.exists() {
         create_dir(&path).with_context(|| format!("Failed to create directory {:?}", path))?;
     }
     path.push("dioxionary.db");
+    Ok(path)
+}
+
+/// Check and generate cache directory path.
+pub fn get_db() -> Result<Connection> {
+    let path = get_db_path()?;
     let conn = Connection::open(path)?;
     Ok(conn)
 }
