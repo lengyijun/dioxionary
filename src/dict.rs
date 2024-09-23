@@ -1,6 +1,5 @@
 //! Look up words from the Internet.
-use anyhow::{anyhow, Context, Result};
-use itertools::EitherOrBoth::{Both, Left, Right};
+use anyhow::Result;
 use rodio::{Decoder, OutputStream, Sink};
 use std::io::Cursor;
 

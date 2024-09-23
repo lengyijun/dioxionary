@@ -1,4 +1,3 @@
-use crate::history;
 use crate::spaced_repetition::SpacedRepetiton;
 use anyhow::Result;
 use chrono::DateTime;
@@ -6,15 +5,8 @@ use chrono::Duration;
 use chrono::Local;
 use fsrs::MemoryState;
 use fsrs::DEFAULT_PARAMETERS;
-use fsrs::FSRS;
-use rusqlite::params;
 use rusqlite::Connection;
-use rusqlite::OptionalExtension;
-use rustyline::error::ReadlineError;
 use rustyline::history::History;
-use rustyline::history::SearchDirection;
-use rustyline::history::SearchResult;
-use rustyline::Config;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
