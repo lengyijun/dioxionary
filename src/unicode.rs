@@ -23,7 +23,7 @@ impl SearchAble for UnicodePicker {
 
         let mut s = String::new();
 
-        'outer: for line in reader.lines().flatten() {
+        'outer: for line in reader.lines().map_while(Result::ok) {
             let v = line.split(' ');
             for x in v.skip(1) {
                 let x = x.to_lowercase();

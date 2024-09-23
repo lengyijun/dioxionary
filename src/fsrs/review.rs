@@ -34,12 +34,11 @@ impl App {
                 let t = self.cell.get_or_init(|| {
                     self.answer
                         .iter()
-                        .map(|x| {
+                        .flat_map(|x| {
                             let mut y = x.get_bufferlines(area);
                             y.push(BufferLine::Line(Vec::new()));
                             y
                         })
-                        .flatten()
                         .collect()
                 });
                 f.render_stateful_widget(FasterMarkdownWidget { t }, area, offset);

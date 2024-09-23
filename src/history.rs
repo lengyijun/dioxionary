@@ -2,7 +2,6 @@
 use crate::spaced_repetition::SpacedRepetiton;
 use anyhow::{Context, Result};
 use dirs::data_dir;
-use prettytable::{Attr, Cell, Row, Table};
 use rusqlite::Connection;
 use std::fs::create_dir;
 

@@ -346,8 +346,7 @@ impl Dict {
     }
 
     fn get(&self, offset: usize, size: usize) -> &str {
-        &self
-            .contents
+        self.contents
             .get_or_init(|| self.dict_type.load())
             .get(offset..offset + size)
             .unwrap_or_default()
@@ -459,7 +458,7 @@ mod test {
         let misspell = ["rst", "cago", "crade"];
         let correct = ["rust", "cargo", "crate"];
         for (mis, cor) in izip!(misspell, correct) {
-            let fuzzy = stardict.fuzzy_lookup(mis).unwrap();
+            let fuzzy = stardict.fuzzy_lookup(mis);
             fuzzy.iter().find(|w| w.word == cor).unwrap();
         }
     }
