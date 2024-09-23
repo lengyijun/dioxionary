@@ -105,13 +105,13 @@ CREATE TABLE session (
     timestamp REAL NOT NULL DEFAULT (julianday('now'))
 ) STRICT; -- user, host, pid
 CREATE TABLE fsrs (
-    session_id INTEGER NOT NULL,
     --entry TEXT NOT NULL,
     word TEXT PRIMARY KEY,
     difficulty REAL NOT NULL,
     stability REAL NOT NULL,
     interval INTEGER NOT NULL,
     last_reviewed TEXT NOT NULL,
+    session_id INTEGER NOT NULL,
     --timestamp REAL NOT NULL DEFAULT (julianday('now')),
     FOREIGN KEY (session_id) REFERENCES session(id) ON DELETE CASCADE
 ) STRICT;
