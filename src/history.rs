@@ -40,7 +40,12 @@ pub fn add_history(word: &str) -> Result<()> {
 /// | 220  | 305  | 207   | 203   | 142  | 242 | 126 |
 /// +------+------+-------+-------+------+-----+-----+
 ///
-pub fn list_history(ttype: Option<String>, sort: bool, table: bool, column: usize) -> Result<()> {
+pub fn list_history(
+    _ttype: Option<String>,
+    _sort: bool,
+    _table: bool,
+    _column: usize,
+) -> Result<()> {
     unreachable!()
 }
 
