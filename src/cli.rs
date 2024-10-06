@@ -7,12 +7,6 @@ use clap_complete::Shell;
 #[command(author, about, long_about = None, bin_name = "dioxionary", after_help =
 "Examples:
   When no subcommand is specified, the default is 'lookup'.
-  you can list all records:
-    dioxionary list
-  you can also list the following types:
-    'CET4', 'CET6', 'TOEFL', 'IELTS', 'GMAT', 'GRE', 'SAT'
-  you can count all records:
-    dioxionary count
   you can list all dictionaries:
     dioxionary dicts
   you can review like anki:
