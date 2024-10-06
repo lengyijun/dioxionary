@@ -302,7 +302,7 @@ pub fn repl(
                 } else if !word.is_empty() {
                     let _ = rl.add_history_entry(word);
                     history.push(word.to_owned());
-                    match query(&word) {
+                    match query(word) {
                         Ok((found, s)) => {
                             let s = s.iter().map(PathOrStr::get_str).join("\n\n");
                             println!("{s}");
