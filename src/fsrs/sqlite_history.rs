@@ -298,7 +298,7 @@ impl History for SQLiteHistory {
         self.add_entry(line, Default::default())
     }
 
-    fn add_owned(&mut self, line: String) -> Result<bool> {
+    fn add_owned(&mut self, _line: String) -> Result<bool> {
         unreachable!()
     }
 
