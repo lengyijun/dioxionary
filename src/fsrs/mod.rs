@@ -47,9 +47,7 @@ impl MemoryStateWrapper {
 
 impl Default for sqlite_history::SQLiteHistory {
     fn default() -> Self {
-        let builder = rustyline::config::Builder::new()
-            .auto_add_history(true)
-            .auto_add_history(true);
+        let builder = rustyline::config::Builder::new().auto_add_history(true);
         Self::open(builder.build()).unwrap()
     }
 }
