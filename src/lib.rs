@@ -300,19 +300,11 @@ pub fn repl(
                         println!("no previous word")
                     }
                 } else if !word.is_empty() {
-                    let _ = rl.add_history_entry(word);
                     history.push(word.to_owned());
-                    match query(word) {
-                        Ok((found, s)) => {
-                            let s = s.iter().map(PathOrStr::get_str).join("\n\n");
-                            println!("{s}");
-                            if found != QueryStatus::NotFound && is_enword(word) {
-                                history::add_history(word)?;
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("{:?}", e);
-                        }
+                    let found = query_and_push_tty(word);
+                    if found != QueryStatus::NotFound && is_enword(word) {
+                        let _ = rl.add_history_entry(word);
+                        history::add_history(word)?;
                     }
                 }
             }
