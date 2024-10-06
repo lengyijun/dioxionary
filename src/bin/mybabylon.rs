@@ -88,7 +88,7 @@ fn main() {
         sametypesequence: "m".to_string(),
         dicttype: String::new(),
     };
-    fs::write(&file_path.with_extension("ifo"), ifo.to_string()).expect("can't write ifo");
+    fs::write(file_path.with_extension("ifo"), ifo.to_string()).expect("can't write ifo");
 
     let items: Vec<(String, u32, u32)> = btree_map
         .into_iter()
@@ -100,7 +100,7 @@ fn main() {
     Idx::write_bytes(file_path.with_extension("idx"), items).expect("can't write idx");
 
     fs::write(file_path.with_extension("dict"), content)
-        .with_context(|| format!("Failed to create dict file"))
+        .with_context(|| ("Failed to create dict file").to_string())
         .unwrap();
 }
 
