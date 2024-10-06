@@ -60,10 +60,10 @@ async fn main() -> Result<()> {
                 let online = w.online;
                 let local_first = w.local_first;
                 let exact = w.exact_search;
-                let word = w.word;
+                let words = w.word;
                 let path = &w.local;
                 let read_aloud = w.read_aloud;
-                lookup(word, online, local_first, exact, path, read_aloud, true)
+                lookup(words, online, local_first, exact, path, read_aloud, true)
             }
             Action::Dicts => list_dicts(),
             Action::Review => {
