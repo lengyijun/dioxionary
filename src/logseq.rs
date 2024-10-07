@@ -23,6 +23,7 @@ pub struct Logseq {
 impl SearchAble for Logseq {
     fn push_tty(&self, word: &str) -> anyhow::Result<()> {
         if let Some(p) = self.find_path(word) {
+            println!("{:?}", p);
             let terminal = TerminalProgram::detect();
             let terminal_size = TerminalSize::detect().unwrap_or_default();
             let settings = Settings {
