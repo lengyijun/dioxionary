@@ -20,7 +20,6 @@ use charcoal_dict::Answer;
 use charcoal_dict::{app::config::Normal, word::QueryYoudict, Acquire, ExactQuery, PPrint};
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
 use dirs::home_dir;
-use itertools::Itertools;
 use prettytable::{Attr, Cell, Row, Table};
 use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
 use rustyline::error::ReadlineError;
@@ -29,6 +28,9 @@ use rustyline::hint::HistoryHinter;
 use rustyline::{Completer, Config, Helper, Hinter, Validator};
 use stardict::{EntryWrapper, StarDict};
 use std::borrow::Cow::{self, Borrowed, Owned};
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::process::Command;
 use std::{fs::DirEntry, path::PathBuf};
 use unicode::UnicodePicker;
@@ -276,35 +278,59 @@ pub fn repl(
         fsrs::sqlite_history::SQLiteHistory::default(),
     )?;
     rl.set_helper(Some(MyHelper(HistoryHinter::new())));
+    let _ = rl.add_history_entry("similar");
+    let _ = rl.add_history_entry("similars");
     let mut history: Vec<String> = Vec::new();
+    const THRESHOLD: usize = 2;
     loop {
         let readline = rl.readline("\x1b[34m>> \x1b[0m");
         match readline {
             Ok(word) => {
                 let word = word.trim();
-                if word == "similar"
-                    || word == "similars"
-                    || word == "similar words"
-                    || word == "similar word"
-                {
-                    if let Some(last_word) = history.last() {
-                        let similar_words = rl.history.fuzzy_lookup_in_history(last_word, 2);
-                        if similar_words.is_empty() {
-                            println!("not similar words found")
-                        } else {
-                            for x in similar_words {
-                                println!("{x}");
+                match word {
+                    "" => {}
+                    "similar" | "similar words" | "similar word" => {
+                        // search similar word in history
+                        if let Some(last_word) = history.last() {
+                            let similar_words =
+                                rl.history.fuzzy_lookup_in_history(last_word, THRESHOLD);
+                            if similar_words.is_empty() {
+                                println!("not similar words found")
+                            } else {
+                                for x in similar_words {
+                                    println!("{x}");
+                                }
                             }
+                        } else {
+                            println!("no previous word")
                         }
-                    } else {
-                        println!("no previous word")
                     }
-                } else if !word.is_empty() {
-                    history.push(word.to_owned());
-                    let found = query_and_push_tty(word);
-                    if found != QueryStatus::NotFound && is_enword(word) {
-                        let _ = rl.add_history_entry(word);
-                        history::add_history(word)?;
+                    "similars" => {
+                        // search similar word in /usr/share/dict/words
+                        if let Some(last_word) = history.last() {
+                            let file = File::open("/usr/share/dict/words")?;
+
+                            // Create a BufReader to efficiently read lines
+                            let reader = BufReader::new(file);
+
+                            // Iterate over each line
+                            for line in reader.lines() {
+                                let line = line?; // Handle potential I/O errors
+                                if strsim::levenshtein(&line, last_word) <= THRESHOLD {
+                                    println!("{line}");
+                                }
+                            }
+                        } else {
+                            println!("no previous word")
+                        }
+                    }
+                    _ => {
+                        history.push(word.to_owned());
+                        let found = query_and_push_tty(word);
+                        if found != QueryStatus::NotFound && is_enword(word) {
+                            let _ = rl.add_history_entry(word);
+                            history::add_history(word)?;
+                        }
                     }
                 }
             }
