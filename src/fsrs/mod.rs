@@ -1,3 +1,4 @@
+use crate::sort_str;
 use crate::spaced_repetition::SpacedRepetiton;
 use anyhow::Result;
 use chrono::DateTime;
@@ -142,10 +143,13 @@ fn get_word(conn: &Connection, word: &str) -> Result<MemoryStateWrapper> {
 
 impl sqlite_history::SQLiteHistory {
     pub fn fuzzy_lookup_in_history(&self, target_word: &str, threhold: usize) -> Vec<String> {
+        let sorted_targetword = sort_str(target_word);
         let mut stmt = self.conn.prepare("SELECT word FROM fsrs").unwrap();
         stmt.query_map([], |row| {
             let word: String = row.get(0).unwrap();
-            if strsim::levenshtein(&word, target_word) <= threhold {
+            if strsim::levenshtein(&word, target_word) <= threhold
+                || sort_str(&word) == sorted_targetword
+            {
                 Ok(word)
             } else {
                 Err(rusqlite::Error::ExecuteReturnedResults)
