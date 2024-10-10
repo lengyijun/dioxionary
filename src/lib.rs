@@ -310,13 +310,17 @@ pub fn repl(
                         if let Some(last_word) = history.last() {
                             let file = File::open("/usr/share/dict/words")?;
 
+                            let sorted_lastword = sort_str(&last_word);
+
                             // Create a BufReader to efficiently read lines
                             let reader = BufReader::new(file);
 
                             // Iterate over each line
                             for line in reader.lines() {
                                 let line = line?; // Handle potential I/O errors
-                                if strsim::levenshtein(&line, last_word) <= THRESHOLD {
+                                if strsim::levenshtein(&line, last_word) <= THRESHOLD
+                                    || sort_str(&line) == sorted_lastword
+                                {
                                     println!("{line}");
                                 }
                             }
@@ -362,4 +366,14 @@ pub fn list_dicts() -> Result<()> {
     });
     table.printstd();
     Ok(())
+}
+
+pub fn sort_str(s: &str) -> String {
+    let mut chars: Vec<char> = s.chars().collect();
+
+    // Sort the vector of characters
+    chars.sort();
+
+    // Collect the sorted characters back into a string
+    chars.into_iter().collect()
 }
