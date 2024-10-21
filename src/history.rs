@@ -22,7 +22,7 @@ pub fn get_db() -> Result<Connection> {
     Ok(conn)
 }
 
-/// Add a looked up word to history.
+/// 只在 非交互式的 情况下使用
 pub fn add_history(word: &str) -> Result<()> {
     let mut d = crate::fsrs::sqlite_history::SQLiteHistory::default();
     d.add(word)?;

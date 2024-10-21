@@ -329,11 +329,12 @@ pub fn repl(
                         }
                     }
                     _ => {
+                        let _ = rl.add_history_entry(word);
                         history.push(word.to_owned());
                         let found = query_and_push_tty(word);
                         if found != QueryStatus::NotFound && is_enword(word) {
                             let _ = rl.add_history_entry(word);
-                            history::add_history(word)?;
+                            // history::add_history(word)?;
                         }
                     }
                 }

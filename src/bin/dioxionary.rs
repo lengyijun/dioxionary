@@ -57,13 +57,14 @@ async fn main() -> Result<()> {
             Action::Count => history::count_history(),
             Action::List(t) => history::list_history(t.type_, t.sort, t.table, t.column),
             Action::Lookup(w) => {
-                let online = w.online;
-                let local_first = w.local_first;
-                let exact = w.exact_search;
-                let words = w.word;
-                let path = &w.local;
-                let read_aloud = w.read_aloud;
-                lookup(words, online, local_first, exact, path, read_aloud, true)
+                // let online = w.online;
+                // let local_first = w.local_first;
+                // let exact = w.exact_search;
+                // let words = w.word;
+                // let path = &w.local;
+                // let read_aloud = w.read_aloud;
+                // lookup(words, online, local_first, exact, path, read_aloud, true)
+                unreachable!()
             }
             Action::Dicts => list_dicts(),
             Action::Review => {
