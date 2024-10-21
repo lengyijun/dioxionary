@@ -307,7 +307,7 @@ pub fn repl(
                             let s = s.iter().map(PathOrStr::get_str).join("\n\n");
                             println!("{s}");
                             if found != QueryStatus::NotFound && is_enword(word) {
-                                history::add_history(word.to_owned())?;
+                                history::add_history(word)?;
                             }
                         }
                         Err(e) => {

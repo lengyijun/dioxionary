@@ -1,8 +1,8 @@
 //! History query and addition using [sqlite](https://sqlite.org/index.html).
-use crate::spaced_repetition::SpacedRepetiton;
 use anyhow::{Context, Result};
 use dirs::data_dir;
 use rusqlite::Connection;
+use rustyline::history::History;
 use std::{fs::create_dir, path::PathBuf};
 
 pub fn get_db_path() -> Result<PathBuf> {
@@ -23,9 +23,9 @@ pub fn get_db() -> Result<Connection> {
 }
 
 /// Add a looked up word to history.
-pub fn add_history(word: String) -> Result<()> {
+pub fn add_history(word: &str) -> Result<()> {
     let mut d = crate::fsrs::sqlite_history::SQLiteHistory::default();
-    d.add_fresh_word(word)?;
+    d.add(word)?;
     Ok(())
     // crate::sm2::Deck::add_history(word)
 }

@@ -6,7 +6,6 @@ use chrono::Local;
 use fsrs::MemoryState;
 use fsrs::DEFAULT_PARAMETERS;
 use rusqlite::Connection;
-use rustyline::history::History;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -76,9 +75,8 @@ impl SpacedRepetiton for sqlite_history::SQLiteHistory {
         Ok(None)
     }
 
-    fn add_fresh_word(&mut self, word: String) -> Result<()> {
-        insert_if_not_exists(&self.conn, &word, Default::default())?;
-        Ok(())
+    fn add_fresh_word(&mut self, _word: String) -> Result<()> {
+        unreachable!()
     }
 
     /// requires 1 <= q <= 4
@@ -114,14 +112,6 @@ impl SpacedRepetiton for sqlite_history::SQLiteHistory {
             .execute("DELETE FROM fsrs WHERE word = ?", [question])?;
         Ok(())
     }
-}
-
-fn insert_if_not_exists(conn: &Connection, word: &str, sm: MemoryStateWrapper) -> Result<()> {
-    conn.execute(
-        "INSERT OR IGNORE INTO fsrs (word, stability, difficulty, interval, last_reviewed) VALUES (?1, ?2, ?3, ?4, ?5)",
-        (word, sm.stability, sm.difficulty, sm.interval, sm.last_reviewed.to_string()),
-    )?;
-    Ok(())
 }
 
 fn update(conn: &Connection, word: &str, sm: MemoryStateWrapper) -> Result<()> {

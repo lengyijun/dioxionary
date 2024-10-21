@@ -98,7 +98,7 @@ fn lookup(
             let word = word.trim();
             let found = query_and_push_tty(word);
             if found != QueryStatus::NotFound && is_enword(word) {
-                history::add_history(word.to_owned())?;
+                history::add_history(word)?;
             }
             if found != QueryStatus::FoundLocally && interactive {
                 let _ = query_fuzzy_interactive(word);
