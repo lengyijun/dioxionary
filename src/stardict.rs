@@ -38,7 +38,6 @@ pub trait SearchAble {
 }
 
 /// The stardict to be looked up.
-
 pub struct StarDict {
     ifo: Ifo,
     idx: Idx,
