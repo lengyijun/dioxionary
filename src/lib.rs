@@ -306,35 +306,32 @@ pub fn repl(
                             println!("no previous word")
                         }
                     }
-                    "similars" => {
+                    "similars" | "leven" => {
                         // search similar word in /usr/share/dict/words
                         if let Some(last_word) = history.last() {
-                            let file = File::open("/usr/share/dict/words")?;
-
-                            let sorted_lastword = sort_str(&last_word);
-
-                            // Create a BufReader to efficiently read lines
-                            let reader = BufReader::new(file);
-
-                            // Iterate over each line
-                            for line in reader.lines() {
-                                let line = line?; // Handle potential I/O errors
-                                if strsim::levenshtein(&line, last_word) <= THRESHOLD
-                                    || sort_str(&line) == sorted_lastword
-                                {
-                                    println!("{line}");
-                                }
-                            }
+                            find_similar_words(last_word, THRESHOLD)?;
                         } else {
                             println!("no previous word")
                         }
                     }
                     _ => {
-                        let _ = rl.add_history_entry(word);
-                        history.push(word.to_owned());
-                        let found = query_and_push_tty(word);
-                        if found == QueryStatus::NotFound {
-                            no_result_words.push(word.to_owned());
+                        if word.starts_with("leven ") {
+                            if let Some(last_word) = history.last() {
+                                // `leven 1` : search similar word with levenshtein distance 1
+                                let distance = word[6..].trim();
+                                let distance: usize = distance.parse().unwrap();
+
+                                find_similar_words(last_word, distance)?;
+                            } else {
+                                println!("no previous word")
+                            }
+                        } else {
+                            let _ = rl.add_history_entry(word);
+                            history.push(word.to_owned());
+                            let found = query_and_push_tty(word);
+                            if found == QueryStatus::NotFound {
+                                no_result_words.push(word.to_owned());
+                            }
                         }
                     }
                 }
@@ -353,6 +350,20 @@ pub fn repl(
             _ => break Err(anyhow!("Failed to read lines")),
         }
     }
+}
+
+fn find_similar_words(last_word: &String, threshold: usize) -> Result<(), anyhow::Error> {
+    println!("levenshtein({last_word}, X) ≤ {threshold}, X in /usr/share/dict/words");
+    let file = File::open("/usr/share/dict/words")?;
+    let sorted_lastword = sort_str(last_word);
+    let reader = BufReader::new(file);
+    Ok(for line in reader.lines() {
+        let line = line?; // Handle potential I/O errors
+        if strsim::levenshtein(&line, last_word) <= threshold || sort_str(&line) == sorted_lastword
+        {
+            println!("{line}");
+        }
+    })
 }
 
 /// List stardicts in the dioxionary config path.
