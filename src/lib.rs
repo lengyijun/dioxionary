@@ -281,6 +281,7 @@ pub fn repl(
     // let _ = rl.add_history_entry("similar");
     // let _ = rl.add_history_entry("similars");
     let mut history: Vec<String> = Vec::new();
+    let mut no_result_words: Vec<String> = Vec::new();
     const THRESHOLD: usize = 2;
     loop {
         let readline = rl.readline("\x1b[34m>> \x1b[0m");
@@ -332,9 +333,8 @@ pub fn repl(
                         let _ = rl.add_history_entry(word);
                         history.push(word.to_owned());
                         let found = query_and_push_tty(word);
-                        if found != QueryStatus::NotFound && is_enword(word) {
-                            let _ = rl.add_history_entry(word);
-                            // history::add_history(word)?;
+                        if found == QueryStatus::NotFound {
+                            no_result_words.push(word.to_owned());
                         }
                     }
                 }
@@ -343,7 +343,13 @@ pub fn repl(
                 // clear input when `ctrl+c`
                 continue;
             }
-            Err(ReadlineError::Eof) => break Ok(()),
+            Err(ReadlineError::Eof) => {
+                for word in no_result_words {
+                    // delete from sqlite
+                    let _ = rl.history.delete(&word);
+                }
+                return Ok(());
+            }
             _ => break Err(anyhow!("Failed to read lines")),
         }
     }

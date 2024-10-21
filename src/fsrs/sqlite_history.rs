@@ -255,6 +255,10 @@ COMMIT;
         .optional()
         .map_err(ReadlineError::from)
     }
+
+    pub fn delete(&self, term: &str) -> std::result::Result<usize, rusqlite::Error> {
+        self.conn.execute("DELETE FROM fsrs WHERE word=?1;", [term])
+    }
 }
 
 impl History for SQLiteHistory {
