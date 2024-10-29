@@ -44,7 +44,7 @@ string-interner = "0.15.0"
 rust-stemmers = "1.2.0"
 
 [dependencies.fsrs]
-version = "0.5.5"
+version = "0.6.4"
 
 [build-dependencies]
 shadow-rs = "0"
