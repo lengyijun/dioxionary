@@ -73,7 +73,7 @@ impl Logseq {
         })
     }
 
-    fn find_path<'a>(&'a self, word: &str) -> Option<DirEntry> {
+    pub fn find_path<'a>(&'a self, word: &str) -> Option<DirEntry> {
         let word = word.to_lowercase();
         let root = self.path.join("pages");
         'outer: for entry in WalkDir::new(root) {

@@ -42,6 +42,7 @@ shadow-rs = "0"
 charcoal-dict = {git = "https://github.com/lengyijun/charcoal", branch = "used_in_dioxionary" }
 string-interner = "0.15.0"
 rust-stemmers = "1.2.0"
+markdown = {git = "https://github.com/lengyijun/markdown-rs", branch = "base64" }
 
 [dependencies.fsrs]
 version = "0.6.4"
