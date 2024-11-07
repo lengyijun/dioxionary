@@ -15,6 +15,8 @@ pub mod unicode;
 
 use crate::dict::is_enword;
 use crate::stardict::SearchAble;
+use crate::stardict::{EntryWrapper, StarDict};
+use crate::unicode::UnicodePicker;
 use anyhow::{anyhow, Context, Result};
 use charcoal_dict::Answer;
 use charcoal_dict::{app::config::Normal, word::QueryYoudict, Acquire, ExactQuery, PPrint};
@@ -26,14 +28,12 @@ use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
 use rustyline::hint::HistoryHinter;
 use rustyline::{Completer, Config, Helper, Hinter, Validator};
-use stardict::{EntryWrapper, StarDict};
 use std::borrow::Cow::{self, Borrowed, Owned};
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::process::Command;
 use std::{fs::DirEntry, path::PathBuf};
-use unicode::UnicodePicker;
 
 /// Get the entries of the stardicts.
 fn get_dicts_entries() -> Result<Vec<DirEntry>> {
