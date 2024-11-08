@@ -29,7 +29,7 @@ use rustyline::highlight::Highlighter;
 use rustyline::hint::HistoryHinter;
 use rustyline::{Completer, Config, Helper, Hinter, Validator};
 use std::borrow::Cow::{self, Borrowed, Owned};
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::io::BufRead;
 use std::io::BufReader;
 use std::process::Command;
@@ -37,34 +37,20 @@ use std::{fs::DirEntry, path::PathBuf};
 
 /// Get the entries of the stardicts.
 fn get_dicts_entries() -> Result<Vec<DirEntry>> {
-    let mut dioxionary_dir = dirs::config_dir();
-    let dioxionary_dir = dioxionary_dir
-        .as_mut()
-        .map(|dir| {
-            dir.push("dioxionary");
-            dir
-        })
-        .filter(|dir| dir.is_dir());
+    let dioxionary_dir = dirs::config_dir()
+        .map(|dir| dir.join("dioxionary"))
+        .context("Couldn't find configuration directory")
+        .unwrap();
+    let _ = create_dir_all(&dioxionary_dir);
 
-    let mut stardict_compatible_dir = dirs::home_dir();
-    let stardict_compatible_dir = stardict_compatible_dir
-        .as_mut()
-        .map(|dir| {
-            dir.push(".stardict");
-            dir.push("dic");
-            dir
-        })
-        .filter(|dir| dir.is_dir());
-
-    let path = match (&dioxionary_dir, &stardict_compatible_dir) {
-        (Some(dir), _) => dir,
-        (None, Some(dir)) => dir,
-        (None, None) => return Err(anyhow!("Couldn't find configuration directory")),
-    };
-
-    let mut dicts: Vec<_> = path
+    let mut dicts: Vec<_> = dioxionary_dir
         .read_dir()
-        .with_context(|| format!("Failed to open configuration directory {:?}", path))?
+        .with_context(|| {
+            format!(
+                "Failed to open configuration directory {:?}",
+                dioxionary_dir
+            )
+        })?
         .filter_map(|x| x.ok())
         .filter(|x| x.file_type().unwrap().is_dir())
         .collect();
