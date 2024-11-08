@@ -315,11 +315,10 @@ pub fn repl(
                         }
                     }
                     _ => {
-                        if word.starts_with("leven ") {
+                        if let Some(distance) = word.strip_prefix("leven ") {
                             if let Some(last_word) = history.last() {
                                 // `leven 1` : search similar word with levenshtein distance 1
-                                let distance = word[6..].trim();
-                                let distance: usize = distance.parse().unwrap();
+                                let distance: usize = distance.trim().parse().unwrap();
 
                                 find_similar_words(last_word, distance)?;
                             } else {
@@ -357,13 +356,14 @@ fn find_similar_words(last_word: &String, threshold: usize) -> Result<(), anyhow
     let file = File::open("/usr/share/dict/words")?;
     let sorted_lastword = sort_str(last_word);
     let reader = BufReader::new(file);
-    Ok(for line in reader.lines() {
+    for line in reader.lines() {
         let line = line?; // Handle potential I/O errors
         if strsim::levenshtein(&line, last_word) <= threshold || sort_str(&line) == sorted_lastword
         {
             println!("{line}");
         }
-    })
+    }
+    Ok(())
 }
 
 /// List stardicts in the dioxionary config path.
