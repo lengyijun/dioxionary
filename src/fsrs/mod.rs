@@ -76,8 +76,10 @@ impl SpacedRepetiton for sqlite_history::SQLiteHistory {
         Ok(None)
     }
 
-    fn add_fresh_word(&mut self, _word: String) -> Result<()> {
-        unreachable!()
+    fn add_fresh_word(&mut self, word: String) -> Result<()> {
+        self.create_session()?;
+        self.add_entry_ignore(&word, Default::default())?;
+        Ok(())
     }
 
     /// requires 1 <= q <= 4

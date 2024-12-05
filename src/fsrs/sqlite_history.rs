@@ -156,7 +156,7 @@ COMMIT;
         Ok(())
     }
 
-    fn create_session(&mut self) -> Result<()> {
+    pub fn create_session(&mut self) -> Result<()> {
         if self.session_id == 0 {
             self.check_schema()?;
             self.session_id = self.conn.query_row(
@@ -181,10 +181,36 @@ COMMIT;
         false
     }
 
-    fn add_entry(&mut self, line: &str, sm: MemoryStateWrapper) -> Result<bool> {
+    fn add_entry_replace(&mut self, line: &str, sm: MemoryStateWrapper) -> Result<bool> {
         // ignore SQLITE_CONSTRAINT_UNIQUE
         let mut stmt = self.conn.prepare_cached(
 "INSERT OR REPLACE INTO fsrs (session_id, word, stability, difficulty, interval, last_reviewed) VALUES (?1, ?2, ?3, ?4, ?5, ?6) RETURNING rowid;",
+        )?;
+        if let Some(row_id) = stmt
+            .query_row(
+                (
+                    self.session_id,
+                    line,
+                    sm.stability,
+                    sm.difficulty,
+                    sm.interval,
+                    sm.last_reviewed.to_string(),
+                ),
+                |r| r.get(0),
+            )
+            .optional()?
+        {
+            self.row_id.set(row_id);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn add_entry_ignore(&mut self, line: &str, sm: MemoryStateWrapper) -> Result<bool> {
+        // ignore SQLITE_CONSTRAINT_UNIQUE
+        let mut stmt = self.conn.prepare_cached(
+"INSERT OR IGNORE INTO fsrs (session_id, word, stability, difficulty, interval, last_reviewed) VALUES (?1, ?2, ?3, ?4, ?5, ?6) RETURNING rowid;",
         )?;
         if let Some(row_id) = stmt
             .query_row(
@@ -299,7 +325,7 @@ impl History for SQLiteHistory {
         }
         // Do not create a session until the first entry is added.
         self.create_session()?;
-        self.add_entry(line, Default::default())
+        self.add_entry_replace(line, Default::default())
     }
 
     fn add_owned(&mut self, _line: String) -> Result<bool> {
