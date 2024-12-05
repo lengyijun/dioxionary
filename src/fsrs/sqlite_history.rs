@@ -181,29 +181,52 @@ COMMIT;
         false
     }
 
-    fn add_entry_replace(&mut self, line: &str, sm: MemoryStateWrapper) -> Result<bool> {
-        // ignore SQLITE_CONSTRAINT_UNIQUE
-        let mut stmt = self.conn.prepare_cached(
+    fn add_entry_replace(&mut self, line: &str) -> Result<bool> {
+        let mut stmt = self
+            .conn
+            .prepare_cached("SELECT rowid FROM fsrs WHERE word VALUES ?1;")?;
+        match stmt.query_row((line,), |r| r.get(0) as rusqlite::Result<String>) {
+            Ok(_) => {
+                let mut stmt = self
+                    .conn
+                    .prepare_cached("UPDATE fsrs SET session_id = ?1 WHERE word = ?2;")?;
+
+                if let Some(row_id) = stmt
+                    .query_row((self.session_id, line), |r| r.get(0))
+                    .optional()?
+                {
+                    self.row_id.set(row_id);
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            Err(_) => {
+                let sm: MemoryStateWrapper = Default::default();
+                // ignore SQLITE_CONSTRAINT_UNIQUE
+                let mut stmt = self.conn.prepare_cached(
 "INSERT OR REPLACE INTO fsrs (session_id, word, stability, difficulty, interval, last_reviewed) VALUES (?1, ?2, ?3, ?4, ?5, ?6) RETURNING rowid;",
         )?;
-        if let Some(row_id) = stmt
-            .query_row(
-                (
-                    self.session_id,
-                    line,
-                    sm.stability,
-                    sm.difficulty,
-                    sm.interval,
-                    sm.last_reviewed.to_string(),
-                ),
-                |r| r.get(0),
-            )
-            .optional()?
-        {
-            self.row_id.set(row_id);
-            Ok(true)
-        } else {
-            Ok(false)
+                if let Some(row_id) = stmt
+                    .query_row(
+                        (
+                            self.session_id,
+                            line,
+                            sm.stability,
+                            sm.difficulty,
+                            sm.interval,
+                            sm.last_reviewed.to_string(),
+                        ),
+                        |r| r.get(0),
+                    )
+                    .optional()?
+                {
+                    self.row_id.set(row_id);
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
         }
     }
 
@@ -325,7 +348,7 @@ impl History for SQLiteHistory {
         }
         // Do not create a session until the first entry is added.
         self.create_session()?;
-        self.add_entry_replace(line, Default::default())
+        self.add_entry_replace(line)
     }
 
     fn add_owned(&mut self, _line: String) -> Result<bool> {
