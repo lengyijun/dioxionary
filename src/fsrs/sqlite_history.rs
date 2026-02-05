@@ -184,7 +184,7 @@ COMMIT;
     fn add_entry_replace(&mut self, line: &str) -> Result<bool> {
         let mut stmt = self
             .conn
-            .prepare_cached("SELECT rowid FROM fsrs WHERE word VALUES ?1;")?;
+            .prepare_cached("SELECT rowid FROM fsrs WHERE word = ?1;")?;
         match stmt.query_row((line,), |r| r.get(0) as rusqlite::Result<String>) {
             Ok(_) => {
                 let mut stmt = self
