@@ -13,7 +13,6 @@ pub mod stardict;
 pub mod theme;
 pub mod unicode;
 
-use crate::dict::is_enword;
 use crate::stardict::SearchAble;
 use crate::stardict::{EntryWrapper, StarDict};
 use crate::unicode::UnicodePicker;

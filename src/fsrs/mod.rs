@@ -1,49 +1,13 @@
 use crate::sort_str;
 use crate::spaced_repetition::SpacedRepetiton;
 use anyhow::Result;
-use chrono::DateTime;
-use chrono::Duration;
-use chrono::Local;
-use fsrs::MemoryState;
-use fsrs::DEFAULT_PARAMETERS;
+use chrono::Utc;
+use rs_fsrs::Card;
+use rs_fsrs::Rating;
 use rusqlite::Connection;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 pub mod review;
 pub mod sqlite_history;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct MemoryStateWrapper {
-    pub stability: f32,
-    pub difficulty: f32,
-    pub interval: u32,
-    pub last_reviewed: DateTime<Local>,
-}
-
-impl Default for MemoryStateWrapper {
-    fn default() -> Self {
-        Self {
-            stability: DEFAULT_PARAMETERS[0],
-            difficulty: DEFAULT_PARAMETERS[4] + 2.0 * DEFAULT_PARAMETERS[5],
-            interval: 1,
-            last_reviewed: Local::now(),
-        }
-    }
-}
-
-impl MemoryStateWrapper {
-    pub fn next_review_time(&self) -> DateTime<Local> {
-        self.last_reviewed + Duration::try_days(self.interval.into()).unwrap()
-    }
-
-    fn to_memory_state(&self) -> MemoryState {
-        MemoryState {
-            stability: self.stability,
-            difficulty: self.difficulty,
-        }
-    }
-}
 
 impl Default for sqlite_history::SQLiteHistory {
     fn default() -> Self {
@@ -54,26 +18,8 @@ impl Default for sqlite_history::SQLiteHistory {
 
 impl SpacedRepetiton for sqlite_history::SQLiteHistory {
     fn next_to_review(&self) -> Result<Option<String>> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT word, stability, difficulty, interval, last_reviewed FROM fsrs ORDER BY RANDOM()")?;
-        let person_iter = stmt.query_map([], |row| {
-            let time: String = row.get(4)?;
-            let sm = MemoryStateWrapper {
-                stability: row.get(1)?,
-                difficulty: row.get(2)?,
-                interval: row.get(3)?,
-                last_reviewed: DateTime::<Local>::from_str(&time).unwrap(),
-            };
-            let word = row.get(0)?;
-            Ok((word, sm))
-        })?;
-        for (word, sm) in person_iter.flatten() {
-            if sm.next_review_time() <= Local::now() {
-                return Ok(Some(word));
-            }
-        }
-        Ok(None)
+        let res = self.conn.query_row("SELECT word FROM fsrs WHERE timediff('now', substr(due, 2, length(due) - 2)) LIKE '+%' AND session_id < ?1 ORDER BY RANDOM() LIMIT 1;", (self.session_id,), |row|{row.get(0)})?;
+        Ok(Some(res))
     }
 
     fn add_fresh_word(&mut self, word: String) -> Result<()> {
@@ -83,30 +29,10 @@ impl SpacedRepetiton for sqlite_history::SQLiteHistory {
     }
 
     /// requires 1 <= q <= 4
-    fn update(&mut self, question: String, q: u8) -> Result<()> {
+    fn update(&mut self, question: String, rating: Rating) -> Result<()> {
         let old_state = get_word(&self.conn, &question)?;
-        let next_states = self.fsrs.next_states(
-            Some(old_state.to_memory_state()),
-            0.9,
-            (Local::now() - old_state.last_reviewed)
-                .num_days()
-                .abs()
-                .try_into()?,
-        )?;
-        let new_memory_state = match q {
-            1 => next_states.again,
-            2 => next_states.hard,
-            3 => next_states.good,
-            4 => next_states.easy,
-            _ => unreachable!(),
-        };
-        let x = MemoryStateWrapper {
-            stability: new_memory_state.memory.stability,
-            difficulty: new_memory_state.memory.difficulty,
-            interval: new_memory_state.interval,
-            last_reviewed: Local::now(),
-        };
-        update(&self.conn, &question, x)?;
+        let scheduling_info = self.fsrs.next(old_state, Utc::now(), rating);
+        update(&self.conn, &question, scheduling_info.card)?;
         Ok(())
     }
 
@@ -117,29 +43,45 @@ impl SpacedRepetiton for sqlite_history::SQLiteHistory {
     }
 }
 
-fn update(conn: &Connection, word: &str, sm: MemoryStateWrapper) -> Result<()> {
-    conn.execute(
-        "UPDATE fsrs SET stability = ?2, difficulty = ?3, interval=?4, last_reviewed = ?5 WHERE word = ?1",
-        (word, sm.stability, sm.difficulty, sm.interval, sm.last_reviewed.to_string()),
-    )?;
+fn update(conn: &Connection, word: &str, card: Card) -> Result<()> {
+    conn.execute("INSERT OR REPLACE INTO fsrs (session_id, word, due, stability, difficulty, elapsed_days, scheduled_days, reps, lapses, state, last_review) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11) RETURNING rowid;",
+    (
+         0, // TODO: session_id
+         word,
+         serde_json::to_string(&card.due)?,
+         card.stability,
+         card.difficulty,
+         card.elapsed_days,
+         card.scheduled_days,
+         card.reps,
+         card.lapses,
+         serde_json::to_string(&card.state)?,
+         serde_json::to_string(&card.last_review)?,
+    )
+             )?;
+
     Ok(())
 }
 
-fn get_word(conn: &Connection, word: &str) -> Result<MemoryStateWrapper> {
-    let sm = conn.query_row(
-        "SELECT stability, difficulty, interval, last_reviewed FROM fsrs WHERE word = ?",
-        [word],
-        |row| {
-            let time: String = row.get(3)?;
-            let sm = MemoryStateWrapper {
-                stability: row.get(0)?,
-                difficulty: row.get(1)?,
-                interval: row.get(2)?,
-                last_reviewed: DateTime::<Local>::from_str(&time).unwrap(),
-            };
-            Ok(sm)
-        },
-    )?;
+fn get_word(conn: &Connection, word: &str) -> Result<Card> {
+    let sm = conn.query_row("SELECT due, stability, difficulty, elapsed_days, scheduled_days, reps, lapses, state, last_review
+    FROM fsrs WHERE word = ?", [word], |sqlite_row| {
+        let x0: String = sqlite_row.get(0)?;
+        let x7: String = sqlite_row.get(7)?;
+        let x8: String = sqlite_row.get(8)?;
+        let card: Card = Card {
+            due: serde_json::from_str(&x0).unwrap(),
+            stability: sqlite_row.get(1)?,
+            difficulty: sqlite_row.get(2)?,
+            elapsed_days: sqlite_row.get(3)?,
+            scheduled_days: sqlite_row.get(4)?,
+            reps: sqlite_row.get(5)?,
+            lapses: sqlite_row.get(6)?,
+            state: serde_json::from_str(&x7).unwrap(),
+            last_review: serde_json::from_str(&x8).unwrap(),
+        };
+        Ok(card)
+    })?;
     Ok(sm)
 }
 

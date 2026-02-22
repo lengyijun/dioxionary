@@ -90,8 +90,8 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
     };
 
     loop {
-        if let Some(last_reviewed) = history.last()
-            && last_reviewed == &app.question
+        if let Some(last_review) = history.last()
+            && last_review == &app.question
         {
         } else {
             history.push(app.question.clone());
@@ -103,7 +103,8 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
                 match &app.answer_status {
                     AnswerStatus::Show => match key.code {
                         KeyCode::Char('a') | KeyCode::Char('A') => {
-                            spaced_repetition.update(app.question.to_owned(), 1)?;
+                            spaced_repetition
+                                .update(app.question.to_owned(), rs_fsrs::Rating::Again)?;
 
                             let Some(new_app) = next(&mut spaced_repetition) else {
                                 return Ok(ExitCode::OutOfCard);
@@ -112,7 +113,8 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
                             break;
                         }
                         KeyCode::Char('h') | KeyCode::Char('H') => {
-                            spaced_repetition.update(app.question.to_owned(), 2)?;
+                            spaced_repetition
+                                .update(app.question.to_owned(), rs_fsrs::Rating::Hard)?;
 
                             let Some(new_app) = next(&mut spaced_repetition) else {
                                 return Ok(ExitCode::OutOfCard);
@@ -121,7 +123,8 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
                             break;
                         }
                         KeyCode::Char('g') | KeyCode::Char('G') => {
-                            spaced_repetition.update(app.question.to_owned(), 3)?;
+                            spaced_repetition
+                                .update(app.question.to_owned(), rs_fsrs::Rating::Good)?;
 
                             let Some(new_app) = next(&mut spaced_repetition) else {
                                 return Ok(ExitCode::OutOfCard);
@@ -130,7 +133,8 @@ fn run_app<B: Backend, T: SpacedRepetiton>(
                             break;
                         }
                         KeyCode::Char('e') | KeyCode::Char('E') => {
-                            spaced_repetition.update(app.question.to_owned(), 4)?;
+                            spaced_repetition
+                                .update(app.question.to_owned(), rs_fsrs::Rating::Easy)?;
 
                             let Some(new_app) = next(&mut spaced_repetition) else {
                                 return Ok(ExitCode::OutOfCard);

@@ -1,18 +1,14 @@
 #![feature(let_chains)]
 
 use anyhow::Result;
-use chrono::DateTime;
-use chrono::Local;
 use clap::Parser;
 use dioxionary::fsrs::sqlite_history::SQLiteHistory;
-use dioxionary::fsrs::MemoryStateWrapper;
 use dioxionary::history;
 use dioxionary::query_and_push_tty;
 use dioxionary::spaced_repetition::SpacedRepetiton;
 use dioxionary::stardict::NotFoundError;
 use std::collections::HashSet;
 use std::env;
-use std::str::FromStr;
 use walkdir::WalkDir;
 
 #[derive(Parser, Debug)]
@@ -78,22 +74,14 @@ fn foo() -> Result<String> {
 
     let conn = history::get_db().unwrap();
     let mut stmt =
-        conn.prepare("SELECT word, stability, difficulty, interval, last_reviewed FROM fsrs")?;
+        conn.prepare("SELECT word FROM fsrs WHERE timediff('now', substr(due, 2, length(due) - 2)) LIKE '+%' ORDER BY RANDOM();")?;
     let person_iter = stmt.query_map([], |row| {
-        let time: String = row.get(4)?;
-        let sm = MemoryStateWrapper {
-            stability: row.get(1)?,
-            difficulty: row.get(2)?,
-            interval: row.get(3)?,
-            last_reviewed: DateTime::<Local>::from_str(&time).unwrap(),
-        };
         let word: String = row.get(0)?;
-        Ok((word.to_lowercase(), sm.next_review_time()))
+        Ok(word.to_lowercase())
     })?;
-    let mut v: Vec<(String, _)> = person_iter.flatten().collect();
-    v.sort_by(|(_, a), (_, b)| a.cmp(b));
+    let v: Vec<String> = person_iter.flatten().collect();
 
-    for (w, _) in v {
+    for w in v {
         if w.contains(' ') {
             continue;
         };

@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
         match action {
             Action::Count => history::count_history(),
             Action::List(t) => history::list_history(t.type_, t.sort, t.table, t.column),
-            Action::Lookup(w) => {
+            Action::Lookup(_) => {
                 // let online = w.online;
                 // let local_first = w.local_first;
                 // let exact = w.exact_search;

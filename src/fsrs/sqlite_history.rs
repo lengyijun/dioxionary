@@ -1,13 +1,14 @@
 //! https://github.com/kkawakam/rustyline/blob/master/src/sqlite_history.rs
 //! History impl. based on SQLite
-use crate::fsrs::MemoryStateWrapper;
 use crate::history::get_db_path;
 
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::path::{Path, PathBuf};
 
-use fsrs::{DEFAULT_PARAMETERS, FSRS};
+use rs_fsrs::Card;
+use rs_fsrs::Parameters;
+use rs_fsrs::FSRS;
 use rusqlite::{Connection, DatabaseName, OptionalExtension};
 use rustyline::history::{History, SearchDirection, SearchResult};
 use rustyline::{error::ReadlineError, Config, HistoryDuplicates, Result};
@@ -20,8 +21,8 @@ pub struct SQLiteHistory {
     path: Option<PathBuf>, // None => memory
     pub conn: Connection,  /* we need to keep a connection opened at least for in memory
                             * database and also for cached statement(s) */
-    session_id: usize,   // 0 means no new entry added
-    row_id: Cell<usize>, // max entry id
+    pub session_id: usize, // 0 means no new entry added
+    row_id: Cell<usize>,   // max entry id
     pub fsrs: FSRS,
 }
 
@@ -62,7 +63,7 @@ impl SQLiteHistory {
             conn,
             session_id: 0,
             row_id: Cell::new(0),
-            fsrs: FSRS::new(Some(&DEFAULT_PARAMETERS)).unwrap(),
+            fsrs: FSRS::new(Parameters::default()),
         };
         sh.check_schema()?;
         Ok(sh)
@@ -107,12 +108,17 @@ CREATE TABLE session (
 CREATE TABLE fsrs (
     --entry TEXT NOT NULL,
     word TEXT PRIMARY KEY,
-    difficulty REAL NOT NULL,
+    due TEXT NOT NULL,
     stability REAL NOT NULL,
-    interval INTEGER NOT NULL,
-    last_reviewed TEXT NOT NULL,
+    difficulty REAL NOT NULL,
+    elapsed_days INTEGER NOT NULL,
+    scheduled_days INTEGER NOT NULL,
+    reps INTEGER NOT NULL,
+    lapses INTEGER NOT NULL,
+    state TEXT NOT NULL,
+    last_review TEXT NOT NULL,
     session_id INTEGER NOT NULL,
-    --timestamp REAL NOT NULL DEFAULT (julianday('now')),
+    -- timestamp REAL NOT NULL DEFAULT (julianday('now')),
     FOREIGN KEY (session_id) REFERENCES session(id) ON DELETE CASCADE
 ) STRICT;
 CREATE VIRTUAL TABLE fts USING fts4(content=fsrs, word);
@@ -181,7 +187,7 @@ COMMIT;
         false
     }
 
-    fn add_entry_replace(&mut self, line: &str) -> Result<bool> {
+    fn add_entry_replace(&mut self, line: &str) -> anyhow::Result<bool> {
         let mut stmt = self
             .conn
             .prepare_cached("SELECT rowid FROM fsrs WHERE word = ?1;")?;
@@ -202,20 +208,25 @@ COMMIT;
                 }
             }
             Err(_) => {
-                let sm: MemoryStateWrapper = Default::default();
+                let card = Card::new();
                 // ignore SQLITE_CONSTRAINT_UNIQUE
                 let mut stmt = self.conn.prepare_cached(
-"INSERT OR REPLACE INTO fsrs (session_id, word, stability, difficulty, interval, last_reviewed) VALUES (?1, ?2, ?3, ?4, ?5, ?6) RETURNING rowid;",
+"INSERT OR REPLACE INTO fsrs (session_id, word, due, stability, difficulty, elapsed_days, scheduled_days, reps, lapses, state, last_review) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11) RETURNING rowid;",
         )?;
                 if let Some(row_id) = stmt
                     .query_row(
                         (
                             self.session_id,
                             line,
-                            sm.stability,
-                            sm.difficulty,
-                            sm.interval,
-                            sm.last_reviewed.to_string(),
+                            serde_json::to_string(&card.due)?,
+                            card.stability,
+                            card.difficulty,
+                            card.elapsed_days,
+                            card.scheduled_days,
+                            card.reps,
+                            card.lapses,
+                            serde_json::to_string(&card.state)?,
+                            serde_json::to_string(&card.last_review)?,
                         ),
                         |r| r.get(0),
                     )
@@ -230,20 +241,25 @@ COMMIT;
         }
     }
 
-    pub fn add_entry_ignore(&mut self, line: &str, sm: MemoryStateWrapper) -> Result<bool> {
+    pub fn add_entry_ignore(&mut self, line: &str, card: Card) -> anyhow::Result<bool> {
         // ignore SQLITE_CONSTRAINT_UNIQUE
         let mut stmt = self.conn.prepare_cached(
-"INSERT OR IGNORE INTO fsrs (session_id, word, stability, difficulty, interval, last_reviewed) VALUES (?1, ?2, ?3, ?4, ?5, ?6) RETURNING rowid;",
+"INSERT OR IGNORE INTO fsrs (session_id, word, due, stability, difficulty, elapsed_days, scheduled_days, reps, lapses, state, last_review) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11) RETURNING rowid;",
         )?;
         if let Some(row_id) = stmt
             .query_row(
                 (
                     self.session_id,
                     line,
-                    sm.stability,
-                    sm.difficulty,
-                    sm.interval,
-                    sm.last_reviewed.to_string(),
+                    serde_json::to_string(&card.due)?,
+                    card.stability,
+                    card.difficulty,
+                    card.elapsed_days,
+                    card.scheduled_days,
+                    card.reps,
+                    card.lapses,
+                    serde_json::to_string(&card.state)?,
+                    serde_json::to_string(&card.last_review)?,
                 ),
                 |r| r.get(0),
             )
@@ -348,7 +364,13 @@ impl History for SQLiteHistory {
         }
         // Do not create a session until the first entry is added.
         self.create_session()?;
-        self.add_entry_replace(line)
+        match self.add_entry_replace(line) {
+            Ok(b) => Ok(b),
+            Err(_) => Err(ReadlineError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to add entry",
+            ))),
+        }
     }
 
     fn add_owned(&mut self, _line: String) -> Result<bool> {

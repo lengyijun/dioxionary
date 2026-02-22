@@ -1,4 +1,5 @@
 use anyhow::Result;
+use rs_fsrs::Rating;
 
 pub trait SpacedRepetiton: Sized + Default {
     /// find next reviewable word
@@ -6,7 +7,7 @@ pub trait SpacedRepetiton: Sized + Default {
 
     fn add_fresh_word(&mut self, w: String) -> Result<()>;
 
-    fn update(&mut self, question: String, q: u8) -> Result<()>;
+    fn update(&mut self, question: String, rating: Rating) -> Result<()>;
 
     fn remove(&mut self, question: &str) -> Result<()>;
 }
