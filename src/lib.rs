@@ -279,7 +279,7 @@ pub fn repl(
                         // search similar word in history
                         if let Some(last_word) = history.last() {
                             let similar_words =
-                                rl.history.fuzzy_lookup_in_history(last_word, THRESHOLD);
+                                rl.history().fuzzy_lookup_in_history(last_word, THRESHOLD);
                             if similar_words.is_empty() {
                                 println!("not similar words found")
                             } else {
@@ -327,7 +327,7 @@ pub fn repl(
             Err(ReadlineError::Eof) => {
                 for word in no_result_words {
                     // delete from sqlite
-                    let _ = rl.history.delete(&word);
+                    let _ = rl.history().delete(&word);
                 }
                 return Ok(());
             }

@@ -9,7 +9,8 @@ use std::path::{Path, PathBuf};
 use rs_fsrs::Card;
 use rs_fsrs::Parameters;
 use rs_fsrs::FSRS;
-use rusqlite::{Connection, DatabaseName, OptionalExtension};
+use rusqlite::MAIN_DB;
+use rusqlite::{Connection, OptionalExtension};
 use rustyline::history::{History, SearchDirection, SearchResult};
 use rustyline::{error::ReadlineError, Config, HistoryDuplicates, Result};
 
@@ -430,7 +431,7 @@ PRAGMA incremental_vacuum;
             }
         } else {
             // TODO Validate: backup whole history
-            self.conn.backup(DatabaseName::Main, path, None)?;
+            self.conn.backup(MAIN_DB, path, None)?;
             // TODO Validate: keep using original path
         }
         Ok(())
