@@ -7,12 +7,12 @@ use std::cell::Cell;
 use std::path::{Path, PathBuf};
 
 use rs_fsrs::Card;
-use rs_fsrs::Parameters;
 use rs_fsrs::FSRS;
+use rs_fsrs::Parameters;
 use rusqlite::MAIN_DB;
 use rusqlite::{Connection, OptionalExtension};
 use rustyline::history::{History, SearchDirection, SearchResult};
-use rustyline::{error::ReadlineError, Config, HistoryDuplicates, Result};
+use rustyline::{Config, HistoryDuplicates, Result, error::ReadlineError};
 
 /// History stored in an SQLite database.
 pub struct SQLiteHistory {

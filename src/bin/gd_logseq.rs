@@ -28,7 +28,9 @@ fn try_main() -> anyhow::Result<()> {
         return Err(anyhow!("to_str fail"));
     };
 
-    std::env::set_var("MDPATH", path);
+    unsafe {
+        std::env::set_var("MDPATH", path);
+    }
 
     let html = markdown::to_html_with_options(
         &std::fs::read_to_string(PathBuf::from(path))?,

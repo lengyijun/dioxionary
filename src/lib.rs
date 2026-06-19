@@ -1,5 +1,3 @@
-#![feature(let_chains)]
-
 //! StarDict in Rust!
 //! Use offline or online dictionary to look up words and memorize words in the terminal!
 pub mod cli;
@@ -16,10 +14,10 @@ pub mod unicode;
 use crate::stardict::SearchAble;
 use crate::stardict::{EntryWrapper, StarDict};
 use crate::unicode::UnicodePicker;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use charcoal_dict::Answer;
-use charcoal_dict::{app::config::Normal, word::QueryYoudict, Acquire, ExactQuery, PPrint};
-use dialoguer::{console::Term, theme::ColorfulTheme, Select};
+use charcoal_dict::{Acquire, ExactQuery, PPrint, app::config::Normal, word::QueryYoudict};
+use dialoguer::{Select, console::Term, theme::ColorfulTheme};
 use dirs::home_dir;
 use prettytable::{Attr, Cell, Row, Table};
 use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
@@ -28,7 +26,7 @@ use rustyline::highlight::Highlighter;
 use rustyline::hint::HistoryHinter;
 use rustyline::{Completer, Config, Helper, Hinter, Validator};
 use std::borrow::Cow::{self, Borrowed, Owned};
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::BufRead;
 use std::io::BufReader;
 use std::process::Command;
@@ -212,7 +210,7 @@ pub fn query_fuzzy_interactive(word: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn query_fuzzy(word: &str) -> Vec<EntryWrapper> {
+pub fn query_fuzzy(word: &str) -> Vec<EntryWrapper<'_, '_>> {
     let dicts = get_dics().leak();
 
     let v = dicts

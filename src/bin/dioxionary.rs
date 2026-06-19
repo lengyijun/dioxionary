@@ -1,12 +1,13 @@
 //! StarDict in Rust!
 //! Use offline or online dictionary to look up words and memorize words in the terminal!
 use anyhow::Result;
-use charcoal_dict::{app::config::Normal, word::QueryYoudict, Acquire, ExactQuery, PPrint};
+use charcoal_dict::{Acquire, ExactQuery, PPrint, app::config::Normal, word::QueryYoudict};
 use clap::CommandFactory;
 use dioxionary::{
+    QueryStatus,
     cli::{Action, Cli, Parser},
     dict::is_enword,
-    history, list_dicts, query_and_push_tty, query_fuzzy_interactive, repl, QueryStatus,
+    history, list_dicts, query_and_push_tty, query_fuzzy_interactive, repl,
 };
 use shadow_rs::shadow;
 use std::{env, path::PathBuf};

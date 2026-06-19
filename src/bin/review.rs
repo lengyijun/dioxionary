@@ -1,10 +1,8 @@
-#![feature(let_chains)]
-
 use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use dioxionary::review_helper::AnswerStatus;
 use dioxionary::review_helper::ExitCode;

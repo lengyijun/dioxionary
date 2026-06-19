@@ -1,5 +1,3 @@
-#![feature(let_chains)]
-
 use anyhow::Result;
 use clap::Parser;
 use dioxionary::fsrs::sqlite_history::SQLiteHistory;

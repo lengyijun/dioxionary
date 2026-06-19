@@ -1,5 +1,5 @@
 //! Look up words form the offline stardicts.
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use eio::{FromBytes, ToBytes};
 use flate2::read::GzDecoder;
 use pulldown_cmark_mdcat_ratatui::markdown_widget::PathOrStr;
@@ -7,8 +7,8 @@ use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::error::Error;
 use std::fmt::{self, Debug, Display};
-use std::fs::{self, read, File};
-use std::io::{prelude::*, stdout, BufReader};
+use std::fs::{self, File, read};
+use std::io::{BufReader, prelude::*, stdout};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
