@@ -256,8 +256,12 @@ pub fn repl(
     _path: &Option<String>,
     _read_aloud: bool,
 ) -> Result<()> {
+    let config = Config::builder()
+        .history_ignore_space(true)
+        .auto_add_history(true)
+        .build();
     let mut rl = rustyline::Editor::<MyHelper, fsrs::sqlite_history::SQLiteHistory>::with_history(
-        Config::default(),
+        config,
         fsrs::sqlite_history::SQLiteHistory::default(),
     )?;
     rl.set_helper(Some(MyHelper(HistoryHinter::new())));
