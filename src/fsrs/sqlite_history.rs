@@ -287,19 +287,17 @@ COMMIT;
         let query = match (dir, start_with) {
             (SearchDirection::Forward, true) => {
                 "SELECT docid, word FROM fts WHERE word MATCH '^' || ?1 || '*'  AND docid >= ?2 \
-                 ORDER BY docid ASC LIMIT 1;"
+                 AND length(word) >= length(?1) ORDER BY docid ASC LIMIT 1;"
             }
             (SearchDirection::Forward, false) => {
-                "SELECT docid, word, offsets(fts) FROM fts WHERE word MATCH ?1 || '*'  AND docid \
-                 >= ?2 ORDER BY docid ASC LIMIT 1;"
+                "SELECT docid, word, offsets(fts) FROM fts WHERE word MATCH ?1 || '*' AND docid  >= ?2 AND length(word) >= length(?1) ORDER BY docid ASC LIMIT 1;"
             }
             (SearchDirection::Reverse, true) => {
                 "SELECT docid, word FROM fts WHERE word MATCH '^' || ?1 || '*'  AND docid <= ?2 \
-                 ORDER BY docid DESC LIMIT 1;"
+                 AND length(word) >= length(?1) ORDER BY docid DESC LIMIT 1;"
             }
             (SearchDirection::Reverse, false) => {
-                "SELECT docid, word, offsets(fts) FROM fts WHERE word MATCH ?1 || '*'  AND docid \
-                 <= ?2 ORDER BY docid DESC LIMIT 1;"
+                "SELECT docid, word, offsets(fts) FROM fts WHERE word MATCH ?1 || '*' AND docid <= ?2 AND length(word) >= length(?1) ORDER BY docid DESC LIMIT 1;"
             }
         };
         let mut stmt = self.conn.prepare_cached(query)?;
