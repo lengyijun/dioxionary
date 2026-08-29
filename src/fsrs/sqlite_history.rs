@@ -279,7 +279,7 @@ COMMIT;
         start: usize,
         dir: SearchDirection,
         start_with: bool,
-    ) -> Result<Option<SearchResult>> {
+    ) -> Result<Option<SearchResult<'_>>> {
         if term.is_empty() || start >= self.len() {
             return Ok(None);
         }
@@ -329,7 +329,7 @@ COMMIT;
 
 impl History for SQLiteHistory {
     /// rowid <> index
-    fn get(&self, index: usize, dir: SearchDirection) -> Result<Option<SearchResult>> {
+    fn get(&self, index: usize, dir: SearchDirection) -> Result<Option<SearchResult<'_>>> {
         let rowid = index + 1; // first rowid is 1
         if self.is_empty() {
             return Ok(None);
@@ -495,7 +495,7 @@ PRAGMA incremental_vacuum;
         term: &str,
         start: usize,
         dir: SearchDirection,
-    ) -> Result<Option<SearchResult>> {
+    ) -> Result<Option<SearchResult<'_>>> {
         self.search_match(term, start, dir, false)
     }
 
@@ -504,7 +504,7 @@ PRAGMA incremental_vacuum;
         term: &str,
         start: usize,
         dir: SearchDirection,
-    ) -> Result<Option<SearchResult>> {
+    ) -> Result<Option<SearchResult<'_>>> {
         self.search_match(term, start, dir, true)
     }
 }

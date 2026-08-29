@@ -43,7 +43,7 @@ impl SearchAble for UnicodePicker {
         }
     }
 
-    fn fuzzy_lookup(&self, target_word: &str) -> Vec<crate::stardict::Entry> {
+    fn fuzzy_lookup(&self, _target_word: &str) -> Vec<crate::stardict::Entry<'_>> {
         Vec::new()
     }
 

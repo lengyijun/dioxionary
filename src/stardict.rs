@@ -33,7 +33,7 @@ pub trait SearchAble {
     }
 
     fn exact_lookup(&self, word: &str) -> Option<PathOrStr>;
-    fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry>;
+    fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry<'_>>;
     fn dict_name(&self) -> &str;
 }
 
@@ -119,7 +119,7 @@ impl SearchAble for StarDict {
             .items
             .binary_search_by(|probe| probe.0.to_lowercase().cmp(&word))
         {
-            let (word, offset, size) = &self.idx.items[pos];
+            let (_word, offset, size) = &self.idx.items[pos];
             let trans = self.dict.get(*offset, *size);
             Some(PathOrStr::NormalStr(trans.to_owned()))
         } else {
@@ -127,7 +127,7 @@ impl SearchAble for StarDict {
         }
     }
 
-    fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry> {
+    fn fuzzy_lookup(&self, target_word: &str) -> Vec<Entry<'_>> {
         fn strip_punctuation(w: &str) -> String {
             w.to_lowercase()
                 .chars()
